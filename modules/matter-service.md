@@ -33,17 +33,17 @@ public class Matter {
 }
 ```
 
-### MatterTodo（待办任务）
+### MatterTask（待办任务）
 
 事项中需要人工处理的任务节点。
 
 ```java
-public class MatterTodo {
+public class MatterTask {
     private UUID id;
     private UUID matterId;
-    private String todoKey;        // 语义键（幂等）
+    private String taskKey;        // 语义键（幂等）
     private String skillId;
-    private TodoStatus status;     // pending/completed/cancelled
+    private TaskStatus status;     // pending/completed/cancelled
     private String actor;          // client/lawyer
     private String reviewType;     // clarify/confirm/select
     private JsonNode payload;      // 卡片数据
@@ -66,15 +66,15 @@ GET    /api/v1/matters              # 列表查询
 ### 2. 待办任务
 
 ```
-GET    /api/v1/matters/{id}/todos           # 获取待办列表
-POST   /api/v1/matters/{id}/todos/{todoId}/complete  # 完成待办
+GET    /api/v1/matters/{id}/tasks                    # 获取任务列表
+POST   /api/v1/matters/{id}/tasks/{taskId}/complete  # 完成任务
 ```
 
 ### 3. 状态同步（内部接口）
 
 ```
 POST   /internal/matters/{id}/sync          # AI Engine 同步状态
-POST   /internal/matters/{id}/todos/upsert  # 创建/更新待办
+POST   /internal/matters/{id}/tasks         # 创建/更新任务
 ```
 
 ## 状态同步机制
@@ -97,7 +97,7 @@ AI Engine
 │                                     │
 │  1. 合并 profile（深度合并）         │
 │  2. 合并 data（按路径合并）          │
-│  3. 处理 card（upsert todo）        │
+│  3. 处理 card（upsert task）        │
 │  4. 检查阶段完成条件                 │
 │  5. 更新 current_phase              │
 │                                     │
@@ -142,7 +142,7 @@ public JsonNode mergeData(JsonNode existing, JsonNode patch) {
 
 ## 待办任务处理
 
-### Todo 生命周期
+### Task 生命周期
 
 ```
 ┌─────────┐     complete()     ┌───────────┐
@@ -159,16 +159,16 @@ public JsonNode mergeData(JsonNode existing, JsonNode patch) {
 ### 完成待办
 
 ```java
-public void completeTodo(UUID matterId, UUID todoId, JsonNode result) {
-    MatterTodo todo = todoRepository.findById(todoId);
+public void completeTask(UUID matterId, UUID taskId, JsonNode result) {
+    MatterTask task = taskRepository.findById(taskId);
 
-    // 1. 规范化结果（根据 todoKey 处理特定字段）
-    NormalizedCompletion normalized = normalizeCompletion(todo, result);
+    // 1. 规范化结果（根据 taskKey 处理特定字段）
+    NormalizedCompletion normalized = normalizeCompletion(task, result);
 
-    // 2. 更新 todo 状态
-    todo.setStatus(TodoStatus.COMPLETED);
-    todo.setResult(normalized.result());
-    todo.setCompletedAt(Instant.now());
+    // 2. 更新 task 状态
+    task.setStatus(TaskStatus.COMPLETED);
+    task.setResult(normalized.result());
+    task.setCompletedAt(Instant.now());
 
     // 3. 回写 Matter（如案由确认需要更新 profile.cause_of_action_code）
     if (normalized.matterUpdates() != null) {
@@ -176,14 +176,14 @@ public void completeTodo(UUID matterId, UUID todoId, JsonNode result) {
     }
 
     // 4. 保存
-    todoRepository.save(todo);
+    taskRepository.save(task);
     matterRepository.save(matter);
 }
 ```
 
-### 语义 Todo Key
+### 语义 Task Key
 
-| todo_key | 说明 | 完成时处理 |
+| task_key | 说明 | 完成时处理 |
 |----------|------|-----------|
 | confirm_claim_path | 案由确认 | 更新 profile.cause_of_action_code |
 | confirm_strategy | 策略确认 | 更新 profile.decisions.selected_strategy_id |
@@ -235,11 +235,11 @@ public void advancePhase(Matter matter) {
 
 ```
 ┌─────────────────┐       ┌─────────────────┐
-│     Matter      │       │   MatterTodo    │
+│     Matter      │       │   MatterTask    │
 ├─────────────────┤       ├─────────────────┤
 │ id              │───┐   │ id              │
 │ organization_id │   │   │ matter_id       │───┐
-│ client_id       │   │   │ todo_key        │   │
+│ client_id       │   │   │ task_key        │   │
 │ lawyer_id       │   └──▶│ skill_id        │   │
 │ service_type_id │       │ status          │   │
 │ playbook_id     │       │ actor           │   │
@@ -262,20 +262,20 @@ matter-service/
 │   ├── api/
 │   │   ├── controller/
 │   │   │   ├── MatterController.java
-│   │   │   └── MatterTodoController.java
+│   │   │   └── LawyerTaskController.java
+│   │   └── internal/
+│   │       ├── InternalMatterController.java
+│   │       └── InternalMatterWorkflowSyncController.java
 │   │   └── dto/
 │   ├── application/
 │   │   └── service/
 │   │       ├── MatterService.java
-│   │       ├── MatterTodoService.java
-│   │       └── MatterSyncService.java
-│   ├── domain/
-│   │   ├── entity/
-│   │   │   ├── Matter.java
-│   │   │   └── MatterTodo.java
-│   │   └── repository/
+│   │       ├── MatterTaskService.java
+│   │       └── MatterWorkflowSyncService.java
 │   └── infrastructure/
 │       └── persistence/
+│           └── jpa/entity/
+│               └── MatterTaskEntity.java
 └── src/main/resources/
     └── db/migration/
 ```

@@ -151,7 +151,7 @@ public CardSubmitResponse submitCard(UUID sessionId, UUID cardId, JsonNode answe
     // 2. 调用 AI Engine 处理 human_review
     AiEngineResponse response = aiEngineClient.humanReview(
         sessionId,
-        card.getTodoKey(),
+        card.getTaskKey(),
         answers
     );
 
@@ -161,7 +161,7 @@ public CardSubmitResponse submitCard(UUID sessionId, UUID cardId, JsonNode answe
 
     // 4. 同步到 Matter（如果关联）
     if (session.getMatterId() != null) {
-        matterClient.completeTodo(session.getMatterId(), card.getTodoKey(), answers);
+        matterClient.completeTask(session.getMatterId(), card.getTaskKey(), answers);
     }
 
     return new CardSubmitResponse(response);
@@ -256,7 +256,7 @@ public void upgradeToService(UUID sessionId, String serviceTypeId) {
         │                 ├─────────────────┤   │
         │                 │ id              │   │
         └────────────────▶│ session_id      │───┘
-                          │ todo_key        │
+                          │ task_key        │
                           │ type            │
                           │ review_type     │
                           │ skill_id        │

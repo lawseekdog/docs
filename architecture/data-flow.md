@@ -124,7 +124,7 @@ AI Engine 技能执行完成
 │                 │
 │ 1. Merge Profile│ ─── 合并画像字段
 │ 2. Merge Data   │ ─── 合并业务数据
-│ 3. Upsert Todo  │ ─── 创建/更新待办
+│ 3. Upsert Task  │ ─── 创建/更新待办
 │ 4. Update Phase │ ─── 更新阶段状态
 └─────────────────┘
 ```
@@ -170,10 +170,10 @@ AI Engine 技能执行完成
   "current_phase": "intake",
   "profile": { ... },
   "data": { ... },
-  "todos": [
+  "tasks": [
     {
       "id": "uuid",
-      "todo_key": "confirm_claim_path",
+      "task_key": "confirm_claim_path",
       "status": "pending",
       "actor": "lawyer",
       "payload": { ... }
@@ -189,13 +189,13 @@ AI Engine 技能执行完成
 - AI Engine 是状态的"生产者"
 - Matter Service 是状态的"持久化层"
 - 通过 `sync_data` 节点实现异步同步
-- 使用 `todo_key` 实现幂等更新
+- 使用 `task_key` 实现幂等更新
 
 ### 冲突解决
 
 1. **Profile 合并**：深度合并，新值覆盖旧值
 2. **Data 合并**：按 group.field 路径合并
-3. **Todo 更新**：基于 `todo_key` 幂等 upsert
+3. **Task 更新**：基于 `task_key` 幂等 upsert
 
 ## 缓存策略
 

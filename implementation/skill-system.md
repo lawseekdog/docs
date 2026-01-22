@@ -270,7 +270,7 @@ LLM 返回 Tool Call
 
 | 技能 ID | 名称 | 功能 |
 |---------|------|------|
-| documents-todo | 文书清单 | 生成文书清单 |
+| documents | 文书清单 | 生成文书清单 |
 | document-draft | 文书起草 | 起草法律文书 |
 
 ### Utility 类（工具）
@@ -283,24 +283,21 @@ LLM 返回 Tool Call
 ## 技能配置位置
 
 ```
-collector-service/
-└── resources/
-    └── seed_packages/
-        └── matters_system_resources/
-            └── data/
-                └── skills/
-                    ├── intake/
-                    │   ├── litigation-intake.yaml
-                    │   ├── defense-intake.yaml
-                    │   └── ...
-                    ├── claim_path/
-                    │   └── cause-recommendation.yaml
-                    ├── evidence/
-                    │   └── evidence-analysis.yaml
-                    ├── strategy/
-                    │   ├── issue-analysis.yaml
-                    │   └── strategy-planning.yaml
-                    └── documents/
-                        ├── documents-todo.yaml
-                        └── document-draft.yaml
+ai-engine/
+└── .skills/
+    ├── litigation-intake/
+    │   └── SKILL.md
+    ├── defense-intake/
+    │   └── SKILL.md
+    ├── cause-recommendation/
+    │   └── SKILL.md
+    ├── evidence-analysis/
+    │   └── SKILL.md
+    ├── issue-analysis/
+    │   └── SKILL.md
+    ├── dispute-strategy-planning/
+    │   └── SKILL.md
+    ├── documents/
+    │   └── SKILL.md
+    └── ...
 ```

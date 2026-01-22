@@ -117,7 +117,7 @@ profile.decisions.cause_confirmed == true
 ```
 
 **卡片交互**：
-- todo_key: `confirm_claim_path`
+- task_key: `confirm_claim_path`
 - actor: `lawyer`
 - review_type: `select`
 
@@ -166,7 +166,7 @@ profile.decisions.strategy_confirmed == true
 ```
 
 **卡片交互**：
-- todo_key: `confirm_strategy`
+- task_key: `confirm_strategy`
 - actor: `lawyer`
 - review_type: `confirm`
 
@@ -175,17 +175,16 @@ profile.decisions.strategy_confirmed == true
 **目标**：准备诉讼文书
 
 **技能**：
-- `documents-todo` - 文书清单
-- `document-draft` - 文书起草
+- `documents` - 文书清单
+- `document-generation` - 文书生成
 
 **产出**：
-- data.documents.todo_list - 文书清单
-- data.documents.drafts - 文书草稿
 - profile.decisions.selected_documents - 选定文书
+- data.work_product.documents - 已生成文书/交付物
 
 **完成条件**：
 ```
-profile.decisions.documents_confirmed == true
+profile.decisions.document_reviewed == true
 ```
 
 #### 6. execution（执行）

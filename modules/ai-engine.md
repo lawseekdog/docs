@@ -158,7 +158,7 @@ tools:
 | evidence | evidence-analysis | 证据分析 |
 | strategy | issue-analysis | 争点分析 |
 | strategy | strategy-planning | 策略规划 |
-| documents | documents-todo | 文书清单 |
+| documents | documents | 文书清单 |
 | documents | document-draft | 文书起草 |
 
 ### 技能输出结构
@@ -233,13 +233,14 @@ intake ──▶ claim_path ──▶ evidence ──▶ strategy ──▶ docu
 | select | 多选一 | 选择诉讼策略 |
 | phase_done | 阶段完成 | 收案阶段完成确认 |
 
-### 语义 Todo Key
+### 语义 Task Key
 
 ```python
-_SEMANTIC_TODO_KEY_BY_SKILL = {
+_SEMANTIC_TASK_KEY_BY_SKILL = {
     "cause-recommendation": "confirm_claim_path",
-    "strategy-planning": "confirm_strategy",
-    "documents-todo": "confirm_documents",
+    "dispute-strategy-planning": "confirm_strategy",
+    "documents": "confirm_documents",
+    "work-plan": "confirm_work_plan",
 }
 ```
 
