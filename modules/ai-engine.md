@@ -157,7 +157,8 @@ tools:
 | claim_path | cause-recommendation | 案由推荐 |
 | evidence | evidence-analysis | 证据分析 |
 | strategy | issue-analysis | 争点分析 |
-| strategy | strategy-planning | 策略规划 |
+| strategy | dispute-strategy-planning | 进攻/主张策略规划 |
+| strategy | defense-planning | 抗辩策略规划 |
 | documents | documents | 文书清单 |
 | documents | document-draft | 文书起草 |
 

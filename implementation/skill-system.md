@@ -263,7 +263,7 @@ LLM 返回 Tool Call
 | 技能 ID | 名称 | 功能 |
 |---------|------|------|
 | issue-analysis | 争点分析 | 识别案件争点 |
-| strategy-planning | 策略规划 | 制定诉讼策略 |
+| dispute-strategy-planning | 进攻策略 | 制定进攻/主张策略 |
 | defense-planning | 被告策略 | 被告抗辩策略 |
 
 ### Documents 类（文书）

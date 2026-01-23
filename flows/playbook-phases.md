@@ -145,7 +145,7 @@ data.evidence.analysis_completed == true
 
 **技能**：
 - `issue-analysis` - 争点分析
-- `strategy-planning` - 策略规划
+- `dispute-strategy-planning` - 进攻/主张策略规划（原告/上诉人等）
 
 **优先规则**：
 ```json

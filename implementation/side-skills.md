@@ -18,12 +18,6 @@
 - 是否调用 LLM：否（确定性 UI 步骤，不走 skill registry）
 - 收敛建议：保留为系统节点；不要放在 skills 目录，避免 registry 膨胀与脚本/校验成本
 
-### due-diligence-materials-collect（尽调材料收集）
-- 用途：无材料时强制上传；有材料则直接继续
-- 触发：尽调链路的材料阶段
-- 是否调用 LLM：否（全在 preprocess 内确定性产出）
-- 收敛建议：保留；避免“分析阶段才发现没材料”导致流程卡死/反复追问
-
 ### readiness-assessment（咨询态就绪度评估）
 - 用途：咨询态对“是否建议建档/进入正式事项”做导购式推荐，输出 `data.recommendation_card`
 - 触发：咨询态 playbook 循环阶段
@@ -57,4 +51,4 @@
 - memory-extraction：对话记忆提取（常作为后台/旁路能力）
 - knowledge-ingest：知识库入库增强（internal）
 - document-editing：文书修改（用户驱动触发，不一定走 playbook）
-- strategy-planning：进攻策略规划（当前 playbook 更偏向 dispute-strategy-planning/defense-planning，可按业务再决定是否合并/弃用）
+- sample-structure-parse：范文结构解析（internal；用于把 DOCX 范文萃取为可复用模板结构）
