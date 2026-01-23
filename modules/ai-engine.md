@@ -68,18 +68,18 @@ def router_node(state: UnifiedAgentState) -> dict:
 ```python
 class PlannerChain:
     strategies = [
-        ForceSkillStrategy(),      # 强制指定技能
-        FilePreprocessStrategy(),  # 附件预处理
-        PriorityRulesStrategy(),   # 阶段优先规则
-        DeterministicStrategy(),   # 确定性规则
-        LLMPlannerStrategy(),      # LLM 兜底决策
+        PriorityRulesStrategy(),      # playbook.priority_rules 命中（旁路/护栏技能）
+        AutonomousPlannerStrategy(),  # LLM 在护栏内自主决策（也处理 force_skill 快路径）
+        PhaseCompleteStrategy(),      # 阶段完成推进（推进到下一阶段）
+        NoAvailableSkillsStrategy(),  # 无可用技能时 fail-fast
     ]
 
-    def decide(self, context: PlannerContext) -> PlannerDecision:
+    async def decide(self, ctx: PlannerContext) -> PlannerDecision:
         for strategy in self.strategies:
-            if decision := strategy.decide(context):
+            decision = await strategy.decide(ctx)
+            if decision is not None:
                 return decision
-        raise RuntimeError("No strategy matched")
+        raise RuntimeError("规划失败：无策略匹配")
 ```
 
 ### 3. Run Skill Node
