@@ -12,11 +12,11 @@
 - 是否调用 LLM：是（preprocess 只准备输入，分类由 LLM 完成）
 - 收敛建议：保留为旁路技能；不要把分类逻辑掺进各 intake 技能，避免重复与漂移
 
-### workflow-kickoff（事项启动统一入口）
+### system_action:kickoff（事项启动统一入口，系统节点）
 - 用途：统一开场白 + 通过卡片收集 `profile.facts` + 上传材料 `attachment_file_ids`
-- 触发：各 playbook 的首阶段
-- 是否调用 LLM：否（`scripts/preprocess.py` 直接返回 `_precomputed_skill_output`）
-- 收敛建议：保留；它是“确定性启动护栏”，能显著减少首轮交互不稳定
+- 触发：各 playbook 首阶段（`phase.system_action = "kickoff"`，由 `system_phase` 节点发卡并 interrupt）
+- 是否调用 LLM：否（确定性 UI 步骤，不走 skill registry）
+- 收敛建议：保留为系统节点；不要放在 skills 目录，避免 registry 膨胀与脚本/校验成本
 
 ### due-diligence-materials-collect（尽调材料收集）
 - 用途：无材料时强制上传；有材料则直接继续
@@ -58,4 +58,3 @@
 - knowledge-ingest：知识库入库增强（internal）
 - document-editing：文书修改（用户驱动触发，不一定走 playbook）
 - strategy-planning：进攻策略规划（当前 playbook 更偏向 dispute-strategy-planning/defense-planning，可按业务再决定是否合并/弃用）
-
