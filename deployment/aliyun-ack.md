@@ -25,6 +25,11 @@ nav_order: 4
 2) 配置 `infra-live` 的 Repo-level Variables/Secrets（见 1.1）
 3) 运行 `Terraform (Aliyun)` 工作流，选择 `apply`（创建 VPC + ECS + k3s，并自动写入 `K8S_MASTER_PUBLIC_IP`）
 
+在中国大陆网络环境下的额外注意：
+
+- k3s 默认会从 `docker.io` 拉取部分系统镜像（例如 `rancher/mirrored-pause`），可能出现超时导致 Pod 一直 `ContainerCreating`。
+- `infra-live` 已在 k3s user-data 中配置了 `docker.io` 镜像加速（优先 `registry.aliyuncs.com`）。
+
 如果 `Bootstrap Terraform Backend (OSS)` 报错：
 
 - `oss: ... StatusCode=403, ErrorCode=UserDisable`：通常是 OSS 未开通/账号不可用/或 RAM 权限不足。请先在阿里云控制台开通 OSS，并确保 AK/SK 对 OSS 有权限（可先临时授予 `AliyunOSSFullAccess` 验证闭环）。
@@ -70,7 +75,8 @@ Secrets：
 - `ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`：Terraform 用（建议后续换最小权限 RAM 用户 / OIDC）
 - `K8S_SSH_PRIVATE_KEY`：Deploy SSH 到 master
 - `GH_ORG_TOKEN`：Deploy 时 checkout 私有服务仓库（只读 repo 即可）
-- （可选）`GH_PACKAGES_USERNAME` / `GH_PACKAGES_TOKEN`：私有 GHCR 拉取 secret
+- （推荐）`GH_PACKAGES_TOKEN`：私有 GHCR 拉取 secret（需要 `read:packages`；私有仓库通常还要 `repo`）
+- （可选）`GH_PACKAGES_USERNAME`：未配置时 Deploy 默认用触发人 `github.actor`
 - （可选）`INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（内部互调）
 
 ## 1.2) 竞价（Spot）与“一键释放计算资源”
