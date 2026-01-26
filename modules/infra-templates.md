@@ -17,6 +17,13 @@ uses: lawseekdog/infra-templates/.github/workflows/java-service-ci.yml@v1
 secrets: inherit
 ```
 
+对于非 Java（Python/Node）仓库，则使用：
+
+```yaml
+uses: lawseekdog/infra-templates/.github/workflows/docker-service-ci.yml@v1
+secrets: inherit
+```
+
 ## 当前覆盖范围（现状）
 
 已对齐的 Java 服务仓库（示例）：
@@ -30,6 +37,11 @@ secrets: inherit
   - 多架构：`linux/amd64` + `linux/arm64`
   - 标签：`main`、`vX.Y.Z`、`sha-<short>`
 - 可选：tag（v*）后自动 Helm 部署到 ACK（默认关闭）
+
+非 Java 仓库：
+
+- PR：直接 `docker build` 校验（不推送镜像）
+- main / tag（v*）：构建并推送容器镜像（同上）
 
 ## 重要约束：Actions 存储配额
 

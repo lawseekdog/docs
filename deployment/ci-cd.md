@@ -11,6 +11,11 @@ LawSeekDog 的 Java 微服务采用“复用工作流”模式：
 - 公共工作流：`lawseekdog/infra-templates`
 - 业务仓库只保留薄入口：`.github/workflows/ci.yml`
 
+目前区分两类仓库：
+
+- Java 服务：使用 `java-service-ci.yml`（Maven 构建 + 镜像构建/推送 + 可选 Helm 部署）
+- 非 Java（Python/Node 等）：使用 `docker-service-ci.yml`（直接构建镜像 + 可选 Helm 部署）
+
 ## 1) 触发规则（业务仓库）
 
 默认触发：

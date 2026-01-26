@@ -22,8 +22,8 @@ nav_order: 2
 
 待补齐（重点）：
 
-- Python 服务（`ai-engine` / `collector-service`）的 Dockerfile 仍保留 mono-repo build context 假设（`COPY shared-libs ...`、`COPY ai-engine/...`），需要对齐为“独立仓库可构建镜像”。
 - 多仓库的“本地一键起全栈”编排尚未沉淀为独立仓库/统一入口（原 `law_tools_agent` 的 compose/部署脚本已逐步废弃，需要迁移到专用的 infra/compose 仓库）。
+- Python 微服务依赖 `shared-libs`（跨仓库私有依赖），CI 需要额外 checkout + Token（通常复用 `GH_PACKAGES_TOKEN`）。
 
 ## 2) 运行时链路可用性（按关键路径）
 

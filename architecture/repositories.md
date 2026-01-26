@@ -77,15 +77,19 @@ nav_order: 5
 
 ## 现状差异与迁移注意点（按“代码真实情况”）
 
-### 1) Python 服务的 Dockerfile 仍保留 mono-repo 路径假设
+### 1) Python 服务的独立构建约束：shared-libs（跨仓库依赖）
 
-当前 `ai-engine/Dockerfile`、`collector-service/Dockerfile` 仍使用类似 `COPY shared-libs ...`、`COPY ai-engine/...` 的路径写法，
-这在“单仓库独立构建镜像”的 CI/CD 下会失败（因为 build context 里不存在这些前缀目录）。
+`ai-engine` / `collector-service` / `memory-service` 依赖 `shared-libs`（独立仓库，私有）。
+
+当前采用的工程化策略是：
+
+- Python 服务仓库使用 `infra-templates` 的复用工作流：`docker-service-ci.yml`
+- CI 会额外 checkout `lawseekdog/shared-libs` 到工作区根目录（`./shared-libs/`），Dockerfile 直接 `COPY shared-libs ...` 完成安装
 
 这意味着：
 
-- Java 微服务已经完成“多仓库独立构建与发布”（容器镜像仓库 + Helm；默认 GHCR，可切换到阿里云 ACR）。
-- Python 服务仍处于“拆分后的工程化对齐中”（需要调整 Dockerfile/依赖方式/CI 工作流）。
+- Java 微服务：已完成“多仓库独立构建与发布”（容器镜像仓库 + Helm；默认 GHCR，可切换到阿里云 ACR）。
+- Python 微服务：已可“多仓库独立构建与发布”，但需要为仓库配置可读 `shared-libs` 的 Token（通常复用 `GH_PACKAGES_TOKEN`）。
 
 ### 2) 旧文档中的技术栈信息可能来自 mono-repo 阶段
 

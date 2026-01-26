@@ -8,36 +8,38 @@ nav_order: 6
 
 ## 定位
 
-memory-service 提供“记忆条目（MemoryItem）与事实（Fact）”的存储与查询能力：
+memory-service 提供“事实（Fact）”的结构化存储与召回能力：
 
-- 支持按 scope（SESSION/MATTER/USER）组织与隔离
-- 支持事实增删改查、查询/搜索、迁移（session → matter）
+- 支持按 scope（`case` / `global`）组织与隔离
+- 支持事实增删改查与召回（hybrid：BM25 + 向量可选）
 - 提供 internal recall/extract 等接口供 ai-engine 调用
 
 ## 技术栈
 
-- Java 21 + Spring Boot
-- Postgres + Flyway（默认）
+- Python 3.11 + FastAPI
+- PostgreSQL（事实源）
+- 可选：Qdrant（向量索引，允许重建，best-effort）
 
-## 对外 API（/api/v1，摘录）
+## 对外 API（/api/v1，摘录，当前实现）
 
-- `GET  /api/v1/memory/items`
-- `POST /api/v1/memory/items`
-- `DELETE /api/v1/memory/items/{id}`
 - `POST /api/v1/memory/facts`
 - `GET  /api/v1/memory/facts/{factId}`
 - `PUT  /api/v1/memory/facts/{factId}`
 - `DELETE /api/v1/memory/facts/{factId}`
-- `POST /api/v1/memory/facts/query`
-- `POST /api/v1/memory/facts/search`
-- `POST /api/v1/memory/extract`（当前为占位）
+
+兼容接口（给旧调用方 / shared-libs 客户端）：
+
+- `POST /api/v1/memory/store`
+- `POST /api/v1/memory/recall`
+- `GET  /api/v1/memory/user/{userId}`
 
 ## 对内 API（/internal，摘录）
 
 - `POST /internal/memory/recall`
-- `POST /internal/memory/extract`（当前为占位）
-- `POST /internal/memory/migrate`
+- `GET  /internal/memory/users/{userId}/facts`
 - `GET  /internal/memory/users/{userId}/context`
+- `POST /internal/memory/extract`
+- `POST /internal/memory/refine`
 
 ## 现状与边界
 
