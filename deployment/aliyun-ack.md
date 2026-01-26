@@ -19,17 +19,25 @@ nav_order: 4
 
 目录：`infra-live/terraform/`
 
-最小流程（本地）：
+最小流程（本地，推荐 OSS 远端 state）：
 
 ```bash
 cd infra-live/terraform
+cd bootstrap
+terraform init
+terraform apply -var bucket_name=lawseekdog-tfstate-<unique>
+
+cd ../
+cp backend.hcl.example backend.hcl
+vim backend.hcl
+terraform init -backend-config=backend.hcl
+
 cp env/prod.tfvars.example env/prod.tfvars
 vim env/prod.tfvars
 
 export ALICLOUD_ACCESS_KEY=...
 export ALICLOUD_SECRET_KEY=...
 
-terraform init
 terraform apply -var-file=env/prod.tfvars
 terraform output ack_cluster_id
 ```
@@ -72,4 +80,3 @@ terraform output ack_cluster_id
 2) 触发 `infra-live` 的 `Deploy (ACK)`，使用同一个 `image_tag=v0.3.0`
 
 后续若要做到“一次 tag → 全部仓库自动 tag + 等待 CI 完成 + 自动部署”，可在 `infra-live` 增加一个 orchestrator 工作流（需要更高权限的 PAT），这里先保持最小闭环。
-
