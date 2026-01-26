@@ -19,7 +19,12 @@ nav_order: 4
 
 目录：`infra-live/terraform/`
 
-最小流程（本地，推荐 OSS 远端 state）：
+最小流程（推荐：在 GitHub Actions 一键 bootstrap 远端 state）：
+
+1) 运行 `infra-live` 的 `Bootstrap Terraform Backend (OSS)` 工作流（会创建 OSS bucket + TableStore 锁表，并写入 `TF_STATE_*` Variables）
+2) 再运行 `Terraform (Aliyun)` 工作流，选择 `apply`（会创建 ACK/NodePool，并自动写入 `ALIYUN_ACK_CLUSTER_ID`）
+
+也可以本地执行（同样推荐 OSS 远端 state）：
 
 ```bash
 cd infra-live/terraform
