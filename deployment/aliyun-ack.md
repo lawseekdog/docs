@@ -61,10 +61,12 @@ terraform output ack_cluster_id
 - Variables:
   - `ALIYUN_REGION_ID`（如 `cn-hangzhou`）
   - `ALIYUN_ACK_CLUSTER_ID`
+  - `CI_REGISTRY_PROVIDER`：`aliyun-acr`（推荐）或 `ghcr`
+  - `ALIYUN_ACR_LOGIN_SERVER`：例如 `registry.cn-guangzhou.aliyuncs.com`（当使用 ACR 时必填）
 - Secrets:
   - `GH_ORG_TOKEN`：用于 checkout 私有服务仓库（PAT，至少 `repo` 读权限）
   - `ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`（或配置 OIDC 变量后不需要 AK/SK）
-  - `GH_PACKAGES_USERNAME` / `GH_PACKAGES_TOKEN`（可选：创建 `ghcr-pull` 拉取 secret）
+  - `GH_PACKAGES_USERNAME` / `GH_PACKAGES_TOKEN`（可选：当使用 `ghcr` 且镜像为私有时，用于创建 `ghcr-pull` 拉取 secret）
   - `INTERNAL_API_KEY`（可选：创建 `lawseekdog-secrets`，用于 `/internal/**` 互调）
 
 触发方式：在 `infra-live` Actions 手动触发 `Deploy (ACK)`：

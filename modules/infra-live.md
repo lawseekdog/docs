@@ -30,6 +30,7 @@ nav_order: 99
   - workflow_dispatch：支持 `plan/apply`（需要 repo secrets 的阿里云凭据）
 - `infra-live/.github/workflows/deploy.yml`
   - workflow_dispatch：按指定 `image_tag` 统一部署全部服务（从各服务仓库拉 Helm chart）
+  - 通过 `CI_REGISTRY_PROVIDER` 选择镜像仓库（`aliyun-acr` 或 `ghcr`）
 
 ## 运行所需的变量/密钥（Repo-level）
 
@@ -45,4 +46,3 @@ Secrets：
 - `ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`（未使用 OIDC 时）
 - （可选）`GH_PACKAGES_USERNAME` / `GH_PACKAGES_TOKEN`：创建 `ghcr-pull` 拉取 secret（私有 GHCR 镜像）
 - （可选）`INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（让 `/internal/**` 互调一致）
-
