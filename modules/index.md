@@ -22,4 +22,5 @@ has_children: true
 
 - [ai-boot-framework（工程脚手架）](./ai-boot-framework.md)
 - [infra-templates（复用 CI/CD 工作流）](./infra-templates.md)
+- [infra-live（环境 Terraform + 整体发布）](./infra-live.md)
 

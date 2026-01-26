@@ -30,7 +30,7 @@ nav_order: 5
 | `consultations-service` | Java/Spring Boot | 运行时 | 对话会话 + SSE；对接 `ai-engine` 的 NDJSON 流 |
 | `matter-service` | Java/Spring Boot | 运行时 | 事项/待办/阶段推进；对接 `ai-engine` |
 | `knowledge-service` | Java/Spring Boot | 运行时 | 知识库：文档/Chunk、原子检索、GraphRAG（ES/Neo4j 可选） |
-| `memory-service` | Java/Spring Boot | 运行时 | 记忆条目/事实（当前以结构化存储为主；抽取能力待完善） |
+| `memory-service` | Python/FastAPI | 运行时 | 记忆/事实（结构化存储与召回；抽取能力待完善） |
 | `files-service` | Java/Spring Boot | 运行时 | 文件元数据 + 对象存储适配（MinIO/S3） |
 | `templates-service` | Java/Spring Boot | 运行时 | 模板/文书生成（与 `ai-engine` 交互） |
 | `gateway-service` | Java/Spring Boot | 运行时（占位） | 当前更偏“样板/占位”，不等同于集群入口网关 |
@@ -42,6 +42,7 @@ nav_order: 5
 | `docs` | Jekyll | 工程化 | 本文档站 |
 | `ai-boot-framework` | Java/Maven | 工程化 | 微服务脚手架（BOM/Starter/Archetype） |
 | `infra-templates` | GitHub Actions | 工程化 | 复用工作流（CI/CD） |
+| `infra-live` | Terraform/Helm | 工程化 | 阿里云 ACK 环境（Terraform）+ 整体发布（集中式 Deploy） |
 | `law_tools_agent` | mono-repo | 历史/对照 | 原始项目形态（Playbook/Skills/服务编排规范的来源） |
 
 ## law_tools_agent（原始项目）与多仓库的对应关系

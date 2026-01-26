@@ -1,7 +1,7 @@
 ---
 title: 生产部署要点
 parent: 部署与交付
-nav_order: 4
+nav_order: 5
 ---
 
 # 生产部署要点（配置/密钥/依赖）

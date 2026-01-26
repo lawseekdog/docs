@@ -111,3 +111,17 @@ permissions:
 
 - `image.repository=<registry>/<image_name>`
 - `image.tag=<git tag>`
+
+## 6) 集中式部署（infra-live，推荐用于“私有仓库 + 无法用组织级 Secrets”的场景）
+
+当组织无法对私有仓库使用 Organization secrets（套餐限制）时，把“部署凭据”分散到每个业务仓库会非常痛苦。
+
+因此我们新增了 `lawseekdog/infra-live`：
+
+- 业务仓库：只负责构建并推送镜像（CI 产物=镜像）
+- `infra-live`：集中持有阿里云/集群凭据，负责“整体发布”（见 `deployment/aliyun-ack.md`）
+
+这样做的收益：
+
+- 阿里云/ACK 密钥只在一个仓库配置
+- 业务仓库仍可保持最小 CI 入口（引用 `infra-templates`）
