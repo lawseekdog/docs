@@ -27,7 +27,7 @@ nav_order: 99
 
 - `infra-live/.github/workflows/terraform.yml`
   - push/PR：fmt + init + validate（不做 plan，避免缺少 tfvars/凭据导致失败）
-  - workflow_dispatch：支持 `plan/apply`（需要 repo secrets 的阿里云凭据）
+  - workflow_dispatch：支持 `plan/apply/destroy`；并可覆盖 `create_node_pool=false` 以释放计算资源（需要 repo secrets 的阿里云凭据）
 - `infra-live/.github/workflows/deploy.yml`
   - workflow_dispatch：按指定 `image_tag` 统一部署全部服务（从各服务仓库拉 Helm chart）
   - 通过 `CI_REGISTRY_PROVIDER` 选择镜像仓库（`aliyun-acr` 或 `ghcr`）

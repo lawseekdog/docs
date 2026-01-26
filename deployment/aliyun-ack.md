@@ -24,6 +24,10 @@ nav_order: 4
 1) 运行 `infra-live` 的 `Bootstrap Terraform Backend (OSS)` 工作流（会创建 OSS bucket + TableStore 锁表，并写入 `TF_STATE_*` Variables）
 2) 再运行 `Terraform (Aliyun)` 工作流，选择 `apply`（会创建 ACK/NodePool，并自动写入 `ALIYUN_ACK_CLUSTER_ID`）
 
+如果 `Bootstrap Terraform Backend (OSS)` 报错：
+
+- `oss: ... StatusCode=403, ErrorCode=UserDisable`：通常意味着 **OSS 未开通/账号不可用/或 RAM 权限不足**。请先在阿里云控制台开通 OSS，并确保所用 AK/SK 对 OSS 有权限（建议临时给 `AliyunOSSFullAccess` 验证闭环，再做最小权限收敛）。
+
 也可以本地执行（同样推荐 OSS 远端 state）：
 
 ```bash
@@ -50,6 +54,24 @@ terraform output ack_cluster_id
 将输出的 `ack_cluster_id` 写入 `infra-live` 的 Actions Variables：
 
 - `ALIYUN_ACK_CLUSTER_ID=<ack_cluster_id>`
+
+## 1.1) 竞价（Spot）节点与“一键释放计算资源”
+
+`infra-live/terraform` 支持把默认 NodePool 改成 Spot（抢占式）节点（更省钱，适合 MVP/压测）。
+
+推荐直接用内置的 tfvars：
+
+- `infra-live/terraform/env/mvp-spot.tfvars`
+
+并且提供一个开关用于“释放计算资源但保留 ACK/VPC 等底座”：
+
+- `create_node_pool=false`：会销毁默认 NodePool（释放 Spot/按量实例）
+
+在 GitHub Actions 上执行方式：
+
+1) `Terraform (Aliyun)` → `apply`，选择 `tfvars=env/mvp-spot.tfvars`
+2) 需要释放计算资源时：同一个工作流 `apply`，额外填 `create_node_pool=false`
+3) 需要彻底清理（含 VPC/ACK）：`Terraform (Aliyun)` → `destroy`
 
 ## 2) 整体发布（Deploy 工作流）
 
