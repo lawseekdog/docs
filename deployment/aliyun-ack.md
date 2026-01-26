@@ -71,7 +71,6 @@ Secrets：
 - `K8S_SSH_PRIVATE_KEY`：Deploy SSH 到 master
 - `GH_ORG_TOKEN`：Deploy 时 checkout 私有服务仓库（只读 repo 即可）
 - （可选）`GH_PACKAGES_USERNAME` / `GH_PACKAGES_TOKEN`：私有 GHCR 拉取 secret
-- （可选）`ALIYUN_ACR_USERNAME` / `ALIYUN_ACR_PASSWORD`：私有 ACR 拉取 secret
 - （可选）`INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（内部互调）
 
 ## 1.2) 竞价（Spot）与“一键释放计算资源”
@@ -123,4 +122,3 @@ Secrets：
 - `AliyunOSSFullAccess`（Terraform remote state）
 
 > 自建 k3s 不依赖 ACK 服务角色，因此不需要 `AliyunCS*` 相关授权。
-
