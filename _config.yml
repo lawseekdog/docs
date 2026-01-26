@@ -1,5 +1,33 @@
-theme: jekyll-theme-minimal
 title: LawSeekDog 技术文档
 description: 智能法律服务平台技术文档中心
 show_downloads: false
 google_analytics:
+
+# Docs site theme (GitHub Pages + Actions build).
+remote_theme: just-the-docs/just-the-docs@v0.9.0
+
+color_scheme: light
+search_enabled: true
+heading_anchors: true
+
+aux_links:
+  "GitHub: lawseekdog/docs": "https://github.com/lawseekdog/docs"
+aux_links_new_tab: true
+
+# Keep this config minimal and compatible with GitHub Pages safe-mode plugins.
+plugins:
+  - jekyll-remote-theme
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+
+relative_links:
+  enabled: true
+  collections: true
+
+# Pretty URLs (…/page/ instead of …/page.html).
+permalink: pretty
+
+# Project Pages baseurl. Use relative links in docs as much as possible; this
+# only affects absolute links.
+url: https://lawseekdog.github.io
+baseurl: /docs

@@ -1,281 +1,96 @@
-# Matter Service 模块设计
+---
+title: matter-service（事项中心）
+parent: 模块
+nav_order: 4
+---
 
-## 概述
+# matter-service（事项中心）
 
-Matter Service 负责法律事项（案件）的全生命周期管理，包括事项创建、阶段推进、待办任务、数据同步等。
+## 定位
+
+matter-service 是“事项（Matter）”的真源服务，负责法律服务的全生命周期承载：
+
+- Matter：事项主实体（状态、服务类型、playbook、关联文件、承办信息等）
+- Todo：待办任务（用于工作台/派单/阶段确认等）
+- 阶段推进：与 Playbook 门控/确认点协同
+- 结构化产物承载：证据分析、争点、策略、风险评估等（以当前字段与 API 为准）
+
+在当前实现中，“咨询会话”会自动创建一个 DRAFT matter（参见 `flows/consultation-to-matter.md`）。
 
 ## 技术栈
 
-- Java 21 + Spring Boot 3.3
-- PostgreSQL + Flyway
+- Java 21 + Spring Boot
+- Postgres + Flyway（默认）
 - Spring Data JPA
 
-## 核心概念
+## 核心数据模型（概念）
 
-### Matter（事项）
+以当前代码为准（ID 多为 Long）：
 
-法律服务的核心实体，代表一个案件或法律事务。
+- Matter
+  - `status`：例如 `DRAFT` 等
+  - `service_type_id`：决定 playbook 与业务类型
+  - `playbook_id`：从 platform-service 的 playbook configs 解析/缓存
+  - `source_consultation_session_id`：关联咨询会话（自动创建时写入）
+- MatterTodo
+  - `todo_key`：语义幂等键（内部 upsert/完成按 key 或 id）
+  - actor/review_type/payload/result：用于卡片/确认点
+- MatterAnalysisVersion、MatterPhaseProgress 等（用于分析结果与阶段状态）
 
-```java
-public class Matter {
-    private UUID id;
-    private UUID organizationId;
-    private UUID clientId;
-    private UUID lawyerId;
-    private String serviceTypeId;
-    private String playbookId;
-    private MatterStatus status;
-    private String currentPhase;
-    private JsonNode profile;      // 案件画像
-    private JsonNode data;         // 业务数据
-    private Instant createdAt;
-    private Instant updatedAt;
-}
-```
+## 对外 API（/api/v1）
 
-### MatterTask（待办任务）
+对外 API 面向前端工作台/用户界面：
 
-事项中需要人工处理的任务节点。
+- `GET/POST/PUT ... /api/v1/matters...`（事项 CRUD/列表）
+- `GET/POST ... /api/v1/matters/{id}/todos...`（待办查询/完成）
+- 管理端/律师端接口：以 controller 命名为准（例如 `LawyerMatterController`、`LawyerTodoController`）
 
-```java
-public class MatterTask {
-    private UUID id;
-    private UUID matterId;
-    private String taskKey;        // 语义键（幂等）
-    private String skillId;
-    private TaskStatus status;     // pending/completed/cancelled
-    private String actor;          // client/lawyer
-    private String reviewType;     // clarify/confirm/select
-    private JsonNode payload;      // 卡片数据
-    private JsonNode result;       // 完成结果
-}
-```
+> 具体入参/返回以 OpenAPI 为准（见 `api/openapi.md`）。
 
-## 核心功能
+## 对内 API（/internal）
 
-### 1. 事项管理
+### 1) 从咨询创建事项
 
-```
-POST   /api/v1/matters              # 创建事项
-GET    /api/v1/matters/{id}         # 获取事项详情
-PUT    /api/v1/matters/{id}         # 更新事项
-DELETE /api/v1/matters/{id}         # 删除事项
-GET    /api/v1/matters              # 列表查询
-```
+- `POST /internal/matters/from-consultation`
 
-### 2. 待办任务
+该接口用于 consultations-service 在对话中确保绑定 matter：
 
-```
-GET    /api/v1/matters/{id}/tasks                    # 获取任务列表
-POST   /api/v1/matters/{id}/tasks/{taskId}/complete  # 完成任务
-```
+- 若用户类型为 lawyer/firm_admin，matter 会直接绑定承办律师/律所（对齐 legacy 逻辑）
+- 会创建 intake 收集 todo；若 providerOrganizationId 存在但未绑定 lawyer，则创建派单 todo
 
-### 3. 状态同步（内部接口）
+### 2) 工作流状态与同步
 
-```
-POST   /internal/matters/{id}/sync          # AI Engine 同步状态
-POST   /internal/matters/{id}/tasks         # 创建/更新任务
-```
+- `GET  /internal/matters/{matterId}`（内部读取）
+- `GET  /internal/matters/{matterId}/workflow/profile`（给 ai-engine/consultations 用的工作流 profile）
+- `POST /internal/matters/{matterId}/sync/all`（内部同步入口，供 ai-engine 写入状态/产物）
 
-## 状态同步机制
+### 3) 结构化分析结果提交（internal）
 
-### 同步流程
+该组接口用于提交证据/争点/策略等产物（由 ai-engine skill/tool 调用）：
 
-```
-AI Engine
-    │
-    │ POST /internal/matters/{id}/sync
-    │ {
-    │   "profile": { ... },
-    │   "data": { ... },
-    │   "card": { ... }
-    │ }
-    │
-    ▼
-┌─────────────────────────────────────┐
-│         Matter Service              │
-│                                     │
-│  1. 合并 profile（深度合并）         │
-│  2. 合并 data（按路径合并）          │
-│  3. 处理 card（upsert task）        │
-│  4. 检查阶段完成条件                 │
-│  5. 更新 current_phase              │
-│                                     │
-└─────────────────────────────────────┘
-```
+- `POST /internal/matters/{matterId}/analysis/versions/allocate`
+- `GET  /internal/matters/{matterId}/analysis/versions/latest`
+- `POST /internal/matters/{matterId}/evidences/submit-analysis`
+- `POST /internal/matters/{matterId}/sufficiency/submit`
+- `POST /internal/matters/{matterId}/issues/submit`
+- `POST /internal/matters/{matterId}/strategies/submit`
+- `POST /internal/matters/{matterId}/risk-assessment/submit`
+- `POST /internal/matters/{matterId}/defense-strategy/submit`
+- `POST /internal/matters/{matterId}/appeal-strategy/submit`
 
-### Profile 合并策略
+## 与 platform-service 的关系（配置/Playbook）
 
-```java
-public JsonNode mergeProfile(JsonNode existing, JsonNode patch) {
-    // 深度合并，patch 中的非空值覆盖 existing
-    ObjectNode result = existing.deepCopy();
-    patch.fields().forEachRemaining(entry -> {
-        if (!entry.getValue().isNull()) {
-            result.set(entry.getKey(), entry.getValue());
-        }
-    });
-    return result;
-}
-```
+matter-service 的 ServiceType 与 Playbook 都来自 platform-service：
 
-### Data 合并策略
+- ServiceType 配置 key：`matters.service_types`
+  - 由 collector-service 的 `matters_system_resources` seed 包写入 platform-service
+  - matter-service 通过 `PlatformServiceTypeRegistry` 拉取并缓存
+- PlaybookConfig：由 seed 包导入 platform-service
+  - matter-service 通过 `PlatformPlaybookRegistry` 拉取并缓存
 
-```java
-public JsonNode mergeData(JsonNode existing, JsonNode patch) {
-    // 按 group.field 路径合并
-    // data.evidence.list -> 合并到 existing.evidence.list
-    ObjectNode result = existing.deepCopy();
-    patch.fields().forEachRemaining(group -> {
-        ObjectNode groupNode = (ObjectNode) result.get(group.getKey());
-        if (groupNode == null) {
-            groupNode = objectMapper.createObjectNode();
-            result.set(group.getKey(), groupNode);
-        }
-        group.getValue().fields().forEachRemaining(field -> {
-            groupNode.set(field.getKey(), field.getValue());
-        });
-    });
-    return result;
-}
-```
+这使得“新增服务类型/调整 playbook”无需改 matter-service 代码，仅需更新 seed/config。
 
-## 待办任务处理
+## 现状与边界
 
-### Task 生命周期
-
-```
-┌─────────┐     complete()     ┌───────────┐
-│ pending │ ─────────────────▶ │ completed │
-└────┬────┘                    └───────────┘
-     │
-     │ cancel()
-     ▼
-┌───────────┐
-│ cancelled │
-└───────────┘
-```
-
-### 完成待办
-
-```java
-public void completeTask(UUID matterId, UUID taskId, JsonNode result) {
-    MatterTask task = taskRepository.findById(taskId);
-
-    // 1. 规范化结果（根据 taskKey 处理特定字段）
-    NormalizedCompletion normalized = normalizeCompletion(task, result);
-
-    // 2. 更新 task 状态
-    task.setStatus(TaskStatus.COMPLETED);
-    task.setResult(normalized.result());
-    task.setCompletedAt(Instant.now());
-
-    // 3. 回写 Matter（如案由确认需要更新 profile.cause_of_action_code）
-    if (normalized.matterUpdates() != null) {
-        matter.setProfile(mergeProfile(matter.getProfile(), normalized.matterUpdates()));
-    }
-
-    // 4. 保存
-    taskRepository.save(task);
-    matterRepository.save(matter);
-}
-```
-
-### 语义 Task Key
-
-| task_key | 说明 | 完成时处理 |
-|----------|------|-----------|
-| confirm_claim_path | 案由确认 | 更新 profile.cause_of_action_code |
-| confirm_strategy | 策略确认 | 更新 profile.decisions.selected_strategy_id |
-| confirm_documents | 文书确认 | 更新 profile.decisions.selected_documents |
-| clarify_facts | 事实补充 | 无特殊处理 |
-
-## 阶段管理
-
-### 阶段检查
-
-```java
-public boolean isPhaseComplete(Matter matter, PlaybookPhase phase) {
-    // 检查 gate_field 和 gate_check
-    String gateField = phase.getGateField();
-    String gateCheck = phase.getGateCheck();
-
-    JsonNode value = getFieldValue(matter, gateField);
-
-    return switch (gateCheck) {
-        case "not_empty" -> value != null && !value.isNull();
-        case "equals:true" -> value != null && value.asBoolean();
-        case "equals:completed" -> "completed".equals(value.asText());
-        default -> false;
-    };
-}
-```
-
-### 阶段流转
-
-```java
-public void advancePhase(Matter matter) {
-    Playbook playbook = playbookRegistry.get(matter.getPlaybookId());
-    String currentPhase = matter.getCurrentPhase();
-
-    // 找到下一个阶段
-    List<PlaybookPhase> phases = playbook.getPhases();
-    int currentIndex = findPhaseIndex(phases, currentPhase);
-
-    if (currentIndex < phases.size() - 1) {
-        PlaybookPhase nextPhase = phases.get(currentIndex + 1);
-        matter.setCurrentPhase(nextPhase.getId());
-    }
-}
-```
-
-## 数据模型
-
-### ER 图
-
-```
-┌─────────────────┐       ┌─────────────────┐
-│     Matter      │       │   MatterTask    │
-├─────────────────┤       ├─────────────────┤
-│ id              │───┐   │ id              │
-│ organization_id │   │   │ matter_id       │───┐
-│ client_id       │   │   │ task_key        │   │
-│ lawyer_id       │   └──▶│ skill_id        │   │
-│ service_type_id │       │ status          │   │
-│ playbook_id     │       │ actor           │   │
-│ status          │       │ review_type     │   │
-│ current_phase   │       │ payload         │   │
-│ profile (JSONB) │       │ result          │   │
-│ data (JSONB)    │       │ created_at      │   │
-│ created_at      │       │ completed_at    │   │
-│ updated_at      │       └─────────────────┘   │
-└─────────────────┘                             │
-        │                                       │
-        └───────────────────────────────────────┘
-```
-
-## 目录结构
-
-```
-matter-service/
-├── src/main/java/com/lawseekdog/matter/
-│   ├── api/
-│   │   ├── controller/
-│   │   │   ├── MatterController.java
-│   │   │   └── LawyerTaskController.java
-│   │   └── internal/
-│   │       ├── InternalMatterController.java
-│   │       └── InternalMatterWorkflowSyncController.java
-│   │   └── dto/
-│   ├── application/
-│   │   └── service/
-│   │       ├── MatterService.java
-│   │       ├── MatterTaskService.java
-│   │       └── MatterWorkflowSyncService.java
-│   └── infrastructure/
-│       └── persistence/
-│           └── jpa/entity/
-│               └── MatterTaskEntity.java
-└── src/main/resources/
-    └── db/migration/
-```
+- 已具备“咨询自动生成事项 + todo 初始化 + internal 同步/提交”骨架。
+- 阶段推进/门控规则依赖 ai-engine 的 playbook 校验与技能输出字段一致性（需要测试与回归保障）。

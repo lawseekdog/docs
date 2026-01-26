@@ -1,0 +1,30 @@
+<!-- Local Mermaid (avoid external CDN instability). -->
+<script defer src="{{ '/assets/js/mermaid.min.js' | relative_url }}"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof mermaid === "undefined") return;
+
+    var blocks = document.querySelectorAll("pre > code.language-mermaid");
+    for (var i = 0; i < blocks.length; i++) {
+      var code = blocks[i];
+      var pre = code.parentElement;
+      if (!pre) continue;
+
+      var div = document.createElement("div");
+      div.className = "mermaid";
+      div.textContent = code.textContent;
+      pre.replaceWith(div);
+    }
+
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "loose",
+      theme: "base",
+      flowchart: { htmlLabels: true },
+    });
+
+    mermaid.run();
+  });
+</script>
+
+<link rel="stylesheet" href="{{ '/assets/css/custom.css' | relative_url }}">

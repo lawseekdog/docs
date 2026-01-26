@@ -1,273 +1,97 @@
-# AI Engine 模块设计
+---
+title: ai-engine（AI 执行引擎）
+parent: 模块
+nav_order: 1
+---
 
-## 概述
+# ai-engine（AI 执行引擎）
 
-AI Engine 是系统的智能核心，基于 LangGraph 实现 Agent 编排，通过 Skill 技能系统和 Playbook 配置驱动法律服务流程。
+## 定位
+
+`ai-engine` 是 LawSeekDog 的 AI 执行引擎，负责：
+
+- 基于 LangGraph 执行 agent 图（planner → run_skill → …）
+- 维护 thread state（Postgres checkpoint）
+- 对外（internal）提供 agent 执行 API（含 NDJSON 流式事件）
+- 管理 skills（.skills 目录）与工具调用（tool handlers）
+
+该服务默认以 internal API 形式被 `consultations-service`、`matter-service`、`templates-service` 等调用。
 
 ## 技术栈
 
-- Python 3.12
+- Python >= 3.11
 - FastAPI
-- LangGraph
-- OpenRouter (LLM 网关)
+- LangGraph + Postgres checkpointer
+- OpenAI 兼容模型调用（默认 OpenRouter；以 provider 配置为准）
 
-## 核心架构
+## 主要组件（代码层）
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        AI Engine                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │   Router    │───▶│   Planner   │───▶│  Run Skill  │         │
-│  │             │    │             │    │             │         │
-│  │ 路由决策     │    │ 技能选择    │    │ 技能执行    │         │
-│  └─────────────┘    └─────────────┘    └──────┬──────┘         │
-│                                               │                 │
-│                     ┌─────────────┐    ┌──────▼──────┐         │
-│                     │ Chat Respond│◀───│  Sync Data  │         │
-│                     │             │    │             │         │
-│                     │ 生成回复    │    │ 状态同步    │         │
-│                     └─────────────┘    └─────────────┘         │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                      Skill Registry                             │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
-│  │ intake   │ │ cause-   │ │ evidence │ │ strategy │ ...      │
-│  │ skills   │ │ recommend│ │ analysis │ │ planning │          │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘          │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                      Tool Handlers                              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
-│  │ file__*  │ │ element__│ │ knowledge│ │ memory__ │ ...      │
-│  │          │ │ *        │ │ __*      │ │ *        │          │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘          │
-└─────────────────────────────────────────────────────────────────┘
-```
+- 应用入口：`ai-engine/src/main.py`
+  - 初始化数据库
+  - 初始化 provider registry
+  - 初始化 SkillRegistry
+  - 初始化 AgentExecutionService（LangGraph）
+- API 路由：`ai-engine/src/api/internal_routes.py`
+  - skills 列表/查询/执行
+  - agent execute/resume（流式/非流式）
+  - pending_card、timeline、trace 查询等
 
-## LangGraph 节点
+## 关键 API（internal）
 
-### 1. Router Node
+以下路径在运行时前缀为 `/internal/ai/...`（因为 FastAPI router prefix=`/ai` 且 include_router prefix=`/internal`）。
 
-路由决策，判断请求类型：
+### 1) Skill API
 
-```python
-def router_node(state: UnifiedAgentState) -> dict:
-    # 判断是否需要 AI 处理
-    # - query: 简单问答
-    # - workflow: 流程推进
-    # - human_review: 人工审核回调
-    return {"_route": "workflow"}
-```
+- `GET  /internal/ai/skills`：列出可用 skills（过滤 internal/api_call_only）
+- `GET  /internal/ai/skills/{skill_name}`：查询 skill 详情
+- `POST /internal/ai/skills/{skill_name}/execute`：技能直跑（`skill_only=true`，强制执行指定 skill）
 
-### 2. Planner Node
+### 2) Agent 执行 API
 
-技能选择决策，采用策略链模式：
+- `GET  /internal/ai/agent/pending_card?thread_id=...`
+- `POST /internal/ai/agent/execute`：非流式执行（供服务间调用）
+- `POST /internal/ai/agent/resume`：非流式恢复
+- `POST /internal/ai/agent/execute/stream`：流式执行（NDJSON）
+- `POST /internal/ai/agent/resume/stream`：流式恢复（NDJSON）
 
-```python
-class PlannerChain:
-    strategies = [
-        PriorityRulesStrategy(),      # playbook.priority_rules 命中（旁路/护栏技能）
-        AutonomousPlannerStrategy(),  # LLM 在护栏内自主决策（也处理 force_skill 快路径）
-        PhaseCompleteStrategy(),      # 阶段完成推进（推进到下一阶段）
-        NoAvailableSkillsStrategy(),  # 无可用技能时 fail-fast
-    ]
-
-    async def decide(self, ctx: PlannerContext) -> PlannerDecision:
-        for strategy in self.strategies:
-            decision = await strategy.decide(ctx)
-            if decision is not None:
-                return decision
-        raise RuntimeError("规划失败：无策略匹配")
-```
-
-### 3. Run Skill Node
-
-执行选定的技能：
-
-```python
-async def run_skill_node(state: UnifiedAgentState) -> dict:
-    skill_id = state.get("next_skill")
-    skill = registry.get(skill_id)
-
-    result = await runner.run(skill, state)
-
-    # 处理 action
-    if result.action == "ask_user":
-        return {"_card": {...}, "awaiting_user_input": True}
-
-    return {"skill_output": result.data}
-```
-
-### 4. Sync Data Node
-
-同步状态到 Matter Service：
-
-```python
-async def sync_data_node(state: UnifiedAgentState) -> dict:
-    matter_id = state.get("matter_id")
-    skill_output = state.get("skill_output")
-
-    await matter_client.sync_state(matter_id, skill_output)
-    return {}
-```
-
-## Skill 技能系统
-
-### 技能定义
-
-```yaml
-# skills/litigation-intake.yaml
-id: litigation-intake
-name: 诉讼收案
-description: 收集原告起诉所需的基本信息
-category: intake
-
-system_prompt: |
-  你是一个专业的法律助理，负责收集诉讼案件的基本信息...
-
-output_schema:
-  profile:
-    - summary
-    - plaintiff
-    - defendant
-    - facts
-    - claims
-  data:
-    evidence_list:
-      - name
-      - type
-      - status
-
-tools:
-  - file__get_info
-  - file__parse
-  - element__extract
-```
-
-### 技能分类
-
-| 类别 | 技能 | 说明 |
-|------|------|------|
-| intake | litigation-intake | 诉讼收案 |
-| intake | defense-intake | 被告应诉收案 |
-| intake | arbitration-intake | 仲裁收案 |
-| intake | criminal-intake | 刑事收案 |
-| claim_path | cause-recommendation | 案由推荐 |
-| evidence | evidence-analysis | 证据分析 |
-| strategy | issue-analysis | 争点分析 |
-| strategy | dispute-strategy-planning | 进攻/主张策略规划 |
-| strategy | defense-planning | 抗辩策略规划 |
-| documents | documents | 文书清单 |
-| documents | document-draft | 文书起草 |
-
-### 技能输出结构
+NDJSON 单行格式：
 
 ```json
-{
-  "response": "AI 回复文本",
-  "profile": {
-    "summary": "案件摘要",
-    "plaintiff": { "name": "张三" }
-  },
-  "data": {
-    "evidence": {
-      "list": [...]
-    }
-  },
-  "control": {
-    "action": "continue | ask_user | finish",
-    "review_type": "clarify | confirm | select",
-    "questions": [...]
-  }
-}
+{"event":"token","data":{"node":"chat_respond","content":"..."}}
 ```
 
-## Playbook 配置
+### 3) Trace/Timeline（可观测）
 
-### 结构定义
+- `GET /internal/ai/timeline?...`：按 session/matter/thread 查询轮次摘要
+- `GET /internal/ai/traces?...`：执行 trace 列表
+- `GET /internal/ai/traces/{trace_id}`：trace 详情
 
-```json
-{
-  "id": "litigation_civil_prosecution",
-  "name": "民事诉讼（原告）",
-  "phases": [
-    {
-      "id": "intake",
-      "name": "收案阶段",
-      "goal": "收集案件基本信息",
-      "allowed_skills": ["litigation-intake", "file-classify"],
-      "priority_rules": [...],
-      "checkpoints": ["profile.summary", "profile.plaintiff"],
-      "gate_field": "profile.intake_status",
-      "gate_check": "equals:completed"
-    },
-    {
-      "id": "claim_path",
-      "name": "案由确认",
-      "allowed_skills": ["cause-recommendation"],
-      "gate_field": "profile.decisions.cause_confirmed",
-      "gate_check": "equals:true"
-    }
-  ]
-}
-```
+> 具体字段以实现为准；consultations-service 会把部分事件透传到前端（progress/task_start/task_end 等）。
 
-### 阶段流转
+## 依赖与配置（现状）
 
-```
-intake ──▶ claim_path ──▶ evidence ──▶ strategy ──▶ documents ──▶ execution
-   │           │             │            │             │
-   ▼           ▼             ▼            ▼             ▼
- 收案        案由确认      证据分析     策略规划      文书准备
-```
+必选：
 
-## 卡片交互机制
+- Postgres（用于 LangGraph checkpoint/trace）
 
-### 卡片类型
+可选/按需：
 
-| review_type | 说明 | 示例 |
-|-------------|------|------|
-| clarify | 信息补充 | 请补充原告联系方式 |
-| confirm | 确认操作 | 确认案由选择 |
-| select | 多选一 | 选择诉讼策略 |
-| phase_done | 阶段完成 | 收案阶段完成确认 |
+- 模型 provider：OpenRouter 或其它 OpenAI 兼容网关
 
-### 语义 Task Key
+内部鉴权：
 
-```python
-_SEMANTIC_TASK_KEY_BY_SKILL = {
-    "cause-recommendation": "confirm_claim_path",
-    "dispute-strategy-planning": "confirm_strategy",
-    "documents": "confirm_documents",
-    "work-plan": "confirm_work_plan",
-}
-```
+- 对外 internal API 建议由网络策略隔离 + `X-Internal-Api-Key`（与全局 internal key 一致）
 
-## 目录结构
+## 与其它服务的关系
 
-```
-ai-engine/
-├── src/
-│   ├── api/                    # FastAPI 路由
-│   ├── application/
-│   │   ├── agent/
-│   │   │   ├── nodes/          # LangGraph 节点
-│   │   │   │   ├── router.py
-│   │   │   │   ├── planner.py
-│   │   │   │   ├── run_skill.py
-│   │   │   │   └── sync_data.py
-│   │   │   └── planner/        # Planner 策略
-│   │   │       ├── chain.py
-│   │   │       └── strategies/
-│   │   └── skill_executor/     # 技能执行器
-│   ├── domain/
-│   │   └── agent/
-│   │       └── entities.py     # 状态定义
-│   └── infrastructure/
-│       ├── providers/          # LLM Provider
-│       └── tools/              # 工具实现
-├── tests/
-└── pyproject.toml
-```
+- consultations-service：对外 SSE；内部把对话请求转成 ai-engine 的 NDJSON 流并转发
+- matter-service：事项状态承载；ai-engine 在 skill/tool 中会读写 matter
+- knowledge-service：知识检索（atomic/GraphRAG）
+- memory-service：事实/记忆（当前抽取能力占位）
+- files-service：文件信息/解析（供技能读取材料）
+- platform-service：playbook/config/tag/feature flag 等配置读取
+
+## 状态（工程化）
+
+当前 `ai-engine` 的 Dockerfile 仍保留 mono-repo 的路径假设（需要在“独立仓库构建镜像”场景下做对齐）。
+详见 `architecture/repositories.md` 的迁移注意点。

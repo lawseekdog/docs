@@ -1,0 +1,15 @@
+/* Small visual tweaks on top of just-the-docs. Keep it minimal. */
+
+.mermaid {
+  margin: 1rem 0;
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Slightly improve code readability in long JSON examples. */
+pre, code {
+  font-variant-ligatures: none;
+}

@@ -1,281 +1,157 @@
-# Playbook 阶段设计
+---
+title: Playbook 配置规范（v2）
+parent: 业务流程
+nav_order: 4
+---
 
-## 概述
+# Playbook 配置规范（v2，以当前实现为准）
 
-Playbook 是驱动法律服务流程的配置文件，定义了案件处理的阶段、技能、检查点和流转条件。
+Playbook 是驱动咨询/事项流程的“配置”，由 `ai-engine` 的 Planner/PhaseManager 解析执行。
 
-## Playbook 结构
+Playbook 主要来源：
+
+- `collector-service/resources/seed_packages/matters_system_resources/data/playbooks/*.json`
+- 由 `collector-service` 分发并写入 `platform-service`（PlaybookConfig），供业务服务查询与下发
+
+本页以当前 `ai-engine` 的校验逻辑与现有 playbook JSON 为准（允许 `gate_check` 与 `gate_value` 并存）。
+
+## 1) Playbook 顶层结构
+
+以 `litigation_civil_prosecution` 为例（精简字段）：
 
 ```json
 {
   "id": "litigation_civil_prosecution",
-  "name": "民事诉讼（原告）",
-  "description": "原告发起民事诉讼的完整流程",
+  "version": "2.0",
+  "title": "民事起诉（原告）",
   "matter_category": "litigation",
-  "client_role": "plaintiff",
-  "phases": [...]
-}
-```
+  "description": "民事诉讼原告一审流程",
 
-## 阶段定义
-
-### Phase 结构
-
-```json
-{
-  "id": "intake",
-  "name": "收案阶段",
-  "goal": "收集案件基本信息，建立案件档案",
-  "allowed_skills": ["litigation-intake", "file-classify"],
+  "allowed_skills": ["file-classify", "agentic-search"],
   "priority_rules": [
     {
-      "condition": "has_new_attachments && !data.files.files_classified",
-      "skill": "file-classify"
+      "when": "state.attachment_file_ids.length > 0 && state.files_classified != true",
+      "skill": "file-classify",
+      "reason": "新附件到达，先做文件分类"
     }
   ],
-  "checkpoints": [
-    "profile.summary",
-    "profile.plaintiff.name",
-    "profile.defendant.name",
-    "profile.facts"
-  ],
-  "gate_field": "profile.intake_status",
-  "gate_check": "equals:completed",
-  "completion_conditions": {
-    "required_fields": ["profile.summary", "profile.plaintiff", "profile.defendant"],
-    "optional_fields": ["profile.claims"]
-  }
+
+  "phases": [ ... ],
+
+  "knowledge_bases": ["sys_cases", "sys_laws"],
+  "document_pool": [ ... ]
 }
 ```
 
-### 字段说明
+字段约定（核心）：
 
-| 字段 | 说明 |
-|------|------|
-| id | 阶段唯一标识 |
-| name | 阶段名称 |
-| goal | 阶段目标描述 |
-| allowed_skills | 该阶段可执行的技能列表 |
-| priority_rules | 优先规则（条件 → 技能映射） |
-| checkpoints | 检查点字段列表 |
-| gate_field | 阶段完成判断字段 |
-| gate_check | 完成条件表达式 |
+- `allowed_skills`：全局可执行技能白名单（Planner 只能在其中选择，或由 phase.allowed_skills 进一步收敛）
+- `priority_rules`：全局优先规则（命中时强制选择某技能，优先级高于 LLM 兜底）
+- `phases`：阶段数组（定义阶段目标、可用技能、阶段门控条件）
 
-## 标准阶段流程
+## 2) Phase 结构
 
-### 民事诉讼（原告）
+示例（来自现有 playbook）：
 
-```
-┌─────────┐     ┌─────────────┐     ┌──────────┐
-│ intake  │────▶│ claim_path  │────▶│ evidence │
-│ 收案    │     │ 案由确认    │     │ 证据分析 │
-└─────────┘     └─────────────┘     └────┬─────┘
-                                         │
-┌─────────┐     ┌─────────────┐     ┌────▼─────┐
-│execution│◀────│  documents  │◀────│ strategy │
-│ 执行    │     │  文书准备   │     │ 策略规划 │
-└─────────┘     └─────────────┘     └──────────┘
-```
-
-### 各阶段详情
-
-#### 1. intake（收案）
-
-**目标**：收集案件基本信息
-
-**技能**：
-- `litigation-intake` - 诉讼收案
-- `file-classify` - 附件分类
-
-**产出**：
-- profile.summary - 案件摘要
-- profile.plaintiff - 原告信息
-- profile.defendant - 被告信息
-- profile.facts - 案件事实
-- profile.claims - 诉讼请求
-
-**完成条件**：
-```
-profile.intake_status == "completed"
-```
-
-#### 2. claim_path（案由确认）
-
-**目标**：确定案由和诉讼路径
-
-**技能**：
-- `cause-recommendation` - 案由推荐
-
-**产出**：
-- profile.cause_of_action_code - 案由代码
-- profile.cause_of_action_name - 案由名称
-- profile.decisions.cause_confirmed - 确认标记
-
-**完成条件**：
-```
-profile.decisions.cause_confirmed == true
-```
-
-**卡片交互**：
-- task_key: `confirm_claim_path`
-- actor: `lawyer`
-- review_type: `select`
-
-#### 3. evidence（证据分析）
-
-**目标**：分析证据材料，识别证据缺口
-
-**技能**：
-- `evidence-analysis` - 证据分析
-- `evidence-gap-check` - 证据缺口检查
-
-**产出**：
-- data.evidence.list - 证据清单
-- data.evidence.gaps - 证据缺口
-- data.evidence.analysis_result - 分析结果
-
-**完成条件**：
-```
-data.evidence.analysis_completed == true
-```
-
-#### 4. strategy（策略规划）
-
-**目标**：制定诉讼策略
-
-**技能**：
-- `issue-analysis` - 争点分析
-- `dispute-strategy-planning` - 进攻/主张策略规划（原告/上诉人等）
-
-**优先规则**：
 ```json
 {
-  "condition": "!data.litigation.issues",
-  "skill": "issue-analysis"
+  "id": "strategy",
+  "name": "策略与计划",
+  "goal": "制定诉讼策略并完成确认",
+
+  "priority_rules": [
+    {
+      "when": "state.issues.length == 0",
+      "skill": "issue-analysis",
+      "reason": "先梳理争点"
+    }
+  ],
+
+  "checkpoints": ["issues", "strategies", "risk_assessment", "profile.decisions.selected_strategy_id"],
+
+  "gate_field": "profile.decisions.strategy_confirmed",
+  "gate_value": true,
+
+  "allowed_skills": ["issue-analysis", "strategy-planning"]
 }
 ```
 
-**产出**：
-- data.litigation.issues - 争点列表
-- data.litigation.strategies - 策略方案
-- profile.decisions.selected_strategy_id - 选定策略
+字段说明：
 
-**完成条件**：
-```
-profile.decisions.strategy_confirmed == true
-```
+- `allowed_skills`：阶段内可用技能白名单（优先级 > playbook.allowed_skills）
+- `priority_rules`：阶段内优先规则（优先级低于 `force_skill`，高于 LLM 兜底）
+- `checkpoints`：阶段完成校验的字段（用于“缺口检查”与提示）
+- `gate_field` + (`gate_value` 或 `gate_check`)：阶段门控条件
 
-**卡片交互**：
-- task_key: `confirm_strategy`
-- actor: `lawyer`
-- review_type: `confirm`
+## 3) gate_field / gate_value / gate_check（门控）
 
-#### 5. documents（文书准备）
+### 3.1 gate_field 是“点路径”，不是条件表达式
 
-**目标**：准备诉讼文书
+`gate_field` 与 `checkpoints` 写法遵循以下规则（由 `ai-engine` 强校验）：
 
-**技能**：
-- `documents` - 文书清单
-- `document-generation` - 文书生成
+- 不能写 `state.` 或 `output.` 前缀（这是点路径，不是条件表达式）
+- 允许：
+  - `profile.<field>`（且字段必须在允许列表内）
+  - `profile.decisions.<field>`（只允许到字段级，且字段必须在允许列表内）
+  - data 侧“叶子字段名”（例如 `issues`、`documents`、`evidence_analysis` 等）
+- 禁止：`data.<group>.<field>`（必须直接写叶子字段名）
 
-**产出**：
-- profile.decisions.selected_documents - 选定文书
-- data.work_product.documents - 已生成文书/交付物
+### 3.2 gate_value：等值判断（常见）
 
-**完成条件**：
-```
-profile.decisions.document_reviewed == true
+```json
+{
+  "gate_field": "profile.decisions.cause_confirmed",
+  "gate_value": true
+}
 ```
 
-#### 6. execution（执行）
+### 3.3 gate_check：内置检查器（兼容写法）
 
-**目标**：执行诉讼流程
+现有 playbooks 中也使用 `gate_check`：
 
-**技能**：
-- `filing-guide` - 立案指引
-- `hearing-prep` - 庭审准备
-
-## 阶段流转逻辑
-
-### Planner 决策流程
-
-```python
-def decide_next_phase(state, playbook):
-    current_phase = state.get("current_task_id")
-    phases = playbook.get("phases", [])
-
-    # 找到当前阶段
-    current_idx = find_phase_index(phases, current_phase)
-    current_phase_config = phases[current_idx]
-
-    # 检查当前阶段是否完成
-    if is_phase_complete(state, current_phase_config):
-        # 进入下一阶段
-        if current_idx < len(phases) - 1:
-            return phases[current_idx + 1]["id"]
-
-    return current_phase
+```json
+{
+  "gate_field": "documents",
+  "gate_check": "not_empty"
+}
 ```
 
-### 阶段完成检查
+> 说明：当前实现允许 `gate_value` 与 `gate_check` 二选一；如果写了 `gate_field` 却两者都没有，会被校验拒绝（禁止默认兜底）。
 
-```python
-def is_phase_complete(state, phase_config):
-    gate_field = phase_config.get("gate_field")
-    gate_check = phase_config.get("gate_check")
+## 4) priority_rules.when（条件表达式）
 
-    value = get_nested_value(state, gate_field)
+`priority_rules[*].when` 是表达式（不是点路径），必须遵循约束：
 
-    if gate_check.startswith("equals:"):
-        expected = gate_check.split(":")[1]
-        if expected == "true":
-            return value is True
-        elif expected == "completed":
-            return value == "completed"
+- 必须显式使用 `state.<field>` 引用状态字段（禁止隐式字段引用）
+- 禁止引用 `output.*`
+- 禁止隐式 `data.*`（data 叶子字段也要写成 `state.<leaf>`）
+- 禁止 `in [...]` 语法
+- 仅允许少量函数（例如 `has_uploaded_files()`；以代码为准）
 
-    elif gate_check == "not_empty":
-        return value is not None and value != ""
+示例：
 
-    return False
+```json
+{
+  "when": "state.attachment_file_ids.length > 0 && state.files_classified != true",
+  "skill": "file-classify"
+}
 ```
 
-## 不同服务类型的 Playbook
+## 5) 阶段推进语义（执行侧）
 
-### 诉讼类
+阶段推进的核心语义：
 
-| Playbook ID | 名称 | 角色 |
-|-------------|------|------|
-| litigation_civil_prosecution | 民事诉讼（原告） | plaintiff |
-| litigation_civil_defense | 民事诉讼（被告） | defendant |
-| litigation_appeal | 上诉案件 | appellant |
-| litigation_criminal_defense | 刑事辩护 | defendant |
+1. 先根据 playbook/phase `priority_rules` 尝试选择技能（命中即执行）
+2. 若未命中，Planner 会在 `allowed_skills` 内选择下一技能（包含 LLM 兜底策略）
+3. 每轮技能执行后，PhaseManager 会根据 `gate_*` 与 `checkpoints` 评估是否可推进到下一阶段
+4. 若 `control.action == ask_user`，进入中断等待用户补充（卡片），完成后 `/resume` 继续
 
-### 非诉类
+> 实现细节参见：`implementation/planner-engine.md` 与 `implementation/card-interaction.md`。
 
-| Playbook ID | 名称 |
-|-------------|------|
-| non_litigation_contract_review | 合同审查 |
-| non_litigation_legal_opinion | 法律意见书 |
-| non_litigation_due_diligence | 尽职调查 |
+## 6) 现有 Playbook 列表（来源：seed packages）
 
-### 仲裁类
+以 `collector-service/resources/seed_packages/matters_system_resources/data/playbooks/` 为准，包含：
 
-| Playbook ID | 名称 |
-|-------------|------|
-| arbitration_commercial | 商事仲裁 |
-| arbitration_labor | 劳动仲裁 |
-
-## 配置文件位置
-
-```
-collector-service/
-└── resources/
-    └── seed_packages/
-        └── matters_system_resources/
-            └── data/
-                └── playbooks/
-                    ├── litigation_civil_prosecution.json
-                    ├── litigation_civil_defense.json
-                    ├── litigation_appeal.json
-                    └── ...
-```
+- 诉讼：`litigation_civil_prosecution`、`litigation_civil_defense`、`litigation_civil_appeal_appellant`、`litigation_civil_appeal_appellee`、`litigation_criminal` 等
+- 非诉：`contract_review`、`due_diligence`、`legal_opinion`、`document_drafting` 等
+- 咨询：`consultation_general`

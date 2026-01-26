@@ -1,296 +1,99 @@
-# Consultations Service 模块设计
+---
+title: consultations-service（咨询会话）
+parent: 模块
+nav_order: 3
+---
 
-## 概述
+# consultations-service（咨询会话）
 
-Consultations Service 负责管理用户与 AI 的对话会话，包括消息存储、卡片交互、AI Engine 调用等。
+## 定位
 
-## 核心概念
+consultations-service 负责：
 
-### Session（会话）
+- 咨询会话（Session）管理
+- 消息/附件管理
+- 对前端提供 SSE 对话流（chat/resume）
+- 对接 `ai-engine` 的 NDJSON 事件流并转发（delta/card/end 等）
 
-```java
-public class Session {
-    private UUID id;
-    private UUID userId;
-    private UUID matterId;           // 关联的事项（可选）
-    private String engagementMode;   // legal_consultation | start_service
-    private String serviceTypeId;
-    private String playbookId;
-    private SessionStatus status;
-    private JsonNode state;          // 会话状态快照
-    private Instant createdAt;
-}
-```
+它是“用户实时交互”的主入口之一，也是卡片中断机制的前端出口。
 
-### Message（消息）
+## 技术栈
 
-```java
-public class Message {
-    private UUID id;
-    private UUID sessionId;
-    private MessageRole role;        // user | assistant | system
-    private String content;
-    private JsonNode metadata;
-    private Instant createdAt;
-}
-```
+- Java 21 + Spring Boot
+- Postgres + Flyway（默认）
+- SSE（Spring MVC StreamingResponseBody/SseEmitter）
 
-### Card（卡片）
+## 核心数据模型（概念）
 
-```java
-public class Card {
-    private UUID id;
-    private UUID sessionId;
-    private String todoKey;
-    private String type;             // ask_user
-    private String reviewType;       // clarify | confirm | select
-    private String skillId;
-    private CardStatus status;       // pending | completed | cancelled
-    private JsonNode payload;
-    private JsonNode result;
-}
-```
+以当前代码为准（ID 多为 Long，organizationId 多为 String/可为空）：
 
-## 核心功能
+- ConsultationSession：会话（可绑定 `matter_id`）
+- ConsultationMessage：会话消息（USER/ASSISTANT 等角色）
+- ConsultationAttachment：附件与文件 ID 列表
 
-### 1. 会话管理
+## 对外 API（/api/v1）
 
-```
-POST   /api/v1/consultations/sessions           # 创建会话
-GET    /api/v1/consultations/sessions/{id}      # 获取会话
-DELETE /api/v1/consultations/sessions/{id}      # 结束会话
-```
+会话：
 
-### 2. 对话交互
+- `GET  /api/v1/consultations/sessions`（分页列表）
+- `POST /api/v1/consultations/sessions`（创建）
+- `GET  /api/v1/consultations/sessions/{id}`（详情）
+- `PUT/PATCH /api/v1/consultations/sessions/{id}`（更新）
+- `DELETE /api/v1/consultations/sessions/{id}`（归档/结束）
 
-```
-POST   /api/v1/consultations/sessions/{id}/chat # 发送消息
-GET    /api/v1/consultations/sessions/{id}/messages # 获取消息历史
-```
+对话（流式）：
 
-### 3. 卡片交互
+- `POST /api/v1/consultations/sessions/{id}/chat`（SSE）
+- `POST /api/v1/consultations/sessions/{id}/resume`（SSE）
+- `GET  /api/v1/consultations/sessions/{id}/pending_card`（断线重连兜底）
 
-```
-GET    /api/v1/consultations/sessions/{id}/cards      # 获取卡片列表
-POST   /api/v1/consultations/sessions/{id}/cards/{cardId}/submit # 提交卡片
-```
+其它：
 
-## 对话流程
+- attachments/canvas/citations/stats 等 API（以 OpenAPI 为准）
 
-```
-用户发送消息
-    │
-    ▼
-┌─────────────────────────────────────┐
-│      Consultations Service          │
-│                                     │
-│  1. 保存用户消息                     │
-│  2. 构建 AI Engine 请求             │
-│     - session_id                    │
-│     - matter_id                     │
-│     - user_message                  │
-│     - attachment_file_ids           │
-│     - state (from session/matter)   │
-│                                     │
-└────────────────┬────────────────────┘
-                 │
-                 ▼ POST /chat
-┌─────────────────────────────────────┐
-│          AI Engine                  │
-│                                     │
-│  执行 Agent 流程                     │
-│  返回:                              │
-│  - response                         │
-│  - card (可选)                      │
-│  - state_patch                      │
-│                                     │
-└────────────────┬────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────┐
-│      Consultations Service          │
-│                                     │
-│  3. 保存 AI 回复消息                 │
-│  4. 处理卡片（如有）                 │
-│  5. 更新会话状态                     │
-│  6. 返回响应给前端                   │
-│                                     │
-└─────────────────────────────────────┘
-```
+> 组织/用户上下文通常通过 `X-User-Id`、`X-Organization-Id` 传入（也支持 query param 兜底）。
 
-## 卡片交互机制
+## 对内 API（/internal）
 
-### 卡片生命周期
+主要用于服务间调用与运维/脚本：
 
-```
-AI Engine 返回 card
-    │
-    ▼
-┌─────────┐
-│ pending │ ◀─────────────────────────┐
-└────┬────┘                           │
-     │                                │
-     │ submit()                       │ reopen()
-     ▼                                │
-┌───────────┐                    ┌────┴────┐
-│ completed │                    │ reopened│
-└───────────┘                    └─────────┘
-```
+- `GET  /internal/sessions/{sessionId}`
+- `GET  /internal/sessions/{sessionId}/messages/recent`
+- `POST /internal/sessions/{sessionId}/messages/assistant`
+- `POST /internal/sessions/{sessionId}/messages/user-and-chat`（非流式 chat）
+- `POST /internal/sessions/{sessionId}/resume`（非流式 resume）
+- `GET  /internal/sessions/{sessionId}/intake-context`
 
-### 卡片提交
+## 与其它服务的交互（关键）
 
-```java
-public CardSubmitResponse submitCard(UUID sessionId, UUID cardId, JsonNode answers) {
-    Card card = cardRepository.findById(cardId);
+### 1) 自动绑定 matter（咨询即事项）
 
-    // 1. 验证卡片状态
-    if (card.getStatus() != CardStatus.PENDING) {
-        throw new BizException("卡片已处理");
-    }
+当 session 尚未绑定 `matter_id` 时，chat/resume 会触发：
 
-    // 2. 调用 AI Engine 处理 human_review
-    AiEngineResponse response = aiEngineClient.humanReview(
-        sessionId,
-        card.getTaskKey(),
-        answers
-    );
+- 调用 matter-service：`POST /internal/matters/from-consultation`
+- 写回 session.matter_id 与 playbook_id
 
-    // 3. 更新卡片状态
-    card.setStatus(CardStatus.COMPLETED);
-    card.setResult(answers);
+这使得咨询对话天然拥有“事项工作流”的承载体（Matter）。
 
-    // 4. 同步到 Matter（如果关联）
-    if (session.getMatterId() != null) {
-        matterClient.completeTask(session.getMatterId(), card.getTaskKey(), answers);
-    }
+### 2) 调用 ai-engine（NDJSON）并转发 SSE
 
-    return new CardSubmitResponse(response);
-}
-```
+consultations-service 调用 ai-engine：
 
-## 会话状态管理
+- `POST /internal/ai/agent/execute/stream`
+- `POST /internal/ai/agent/resume/stream`
 
-### 状态来源
+并将 NDJSON events 映射为前端 SSE events：
 
-```
-┌─────────────────┐
-│ Session.state   │ ◀─── 会话级状态（咨询模式）
-└────────┬────────┘
-         │
-         │ 升级为事项后
-         ▼
-┌─────────────────┐
-│ Matter.profile  │ ◀─── 事项级状态（服务模式）
-│ Matter.data     │
-└─────────────────┘
-```
+- `token(node=chat_respond)` → `delta`
+- `card` → `card`
+- `end` → `end`
+- `progress/task_start/task_end`：可透传给前端用于 UI 反馈
 
-### 状态同步
+### 3) playbook 获取
 
-```java
-public JsonNode buildAiEngineState(Session session) {
-    if (session.getMatterId() != null) {
-        // 服务模式：从 Matter 获取状态
-        Matter matter = matterClient.getMatter(session.getMatterId());
-        return buildStateFromMatter(matter);
-    } else {
-        // 咨询模式：使用 Session 状态
-        return session.getState();
-    }
-}
-```
+consultations-service 会在执行前获取/组装 playbook_config（通常来自 platform-service），再作为 context 传入 ai-engine。
 
-## Engagement Mode
+## 现状与边界
 
-### legal_consultation（法律咨询）
-
-- 轻量级对话
-- 不创建 Matter
-- 状态存储在 Session
-- 可升级为 start_service
-
-### start_service（开始服务）
-
-- 创建 Matter
-- 状态存储在 Matter
-- 支持完整 Playbook 流程
-- 支持待办任务
-
-### 模式切换
-
-```java
-public void upgradeToService(UUID sessionId, String serviceTypeId) {
-    Session session = sessionRepository.findById(sessionId);
-
-    // 1. 创建 Matter
-    Matter matter = matterService.create(
-        session.getUserId(),
-        serviceTypeId,
-        session.getState()
-    );
-
-    // 2. 更新 Session
-    session.setMatterId(matter.getId());
-    session.setEngagementMode("start_service");
-
-    sessionRepository.save(session);
-}
-```
-
-## 数据模型
-
-```
-┌─────────────────┐       ┌─────────────────┐
-│     Session     │       │    Message      │
-├─────────────────┤       ├─────────────────┤
-│ id              │───┐   │ id              │
-│ user_id         │   │   │ session_id      │───┐
-│ matter_id       │   │   │ role            │   │
-│ engagement_mode │   └──▶│ content         │   │
-│ service_type_id │       │ metadata        │   │
-│ playbook_id     │       │ created_at      │   │
-│ status          │       └─────────────────┘   │
-│ state (JSONB)   │                             │
-│ created_at      │       ┌─────────────────┐   │
-└─────────────────┘       │      Card       │   │
-        │                 ├─────────────────┤   │
-        │                 │ id              │   │
-        └────────────────▶│ session_id      │───┘
-                          │ task_key        │
-                          │ type            │
-                          │ review_type     │
-                          │ skill_id        │
-                          │ status          │
-                          │ payload         │
-                          │ result          │
-                          └─────────────────┘
-```
-
-## 目录结构
-
-```
-consultations-service/
-├── src/main/java/com/lawseekdog/consultations/
-│   ├── api/
-│   │   ├── controller/
-│   │   │   ├── SessionController.java
-│   │   │   └── CardController.java
-│   │   └── dto/
-│   ├── application/
-│   │   └── service/
-│   │       ├── SessionService.java
-│   │       ├── MessageService.java
-│   │       └── CardService.java
-│   ├── domain/
-│   │   ├── entity/
-│   │   │   ├── Session.java
-│   │   │   ├── Message.java
-│   │   │   └── Card.java
-│   │   └── repository/
-│   └── infrastructure/
-│       ├── client/
-│       │   ├── AiEngineClient.java
-│       │   └── MatterServiceClient.java
-│       └── persistence/
-└── src/main/resources/
-```
+- 该服务已具备完整的“流式对话 + 卡片中断”主链路实现。
+- “咨询模式不创建 matter”的产品形态当前未实现；现状为咨询自动创建 DRAFT matter（见 `flows/consultation-to-matter.md`）。
