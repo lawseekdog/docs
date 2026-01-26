@@ -36,7 +36,6 @@ secrets: inherit
 - main / tag（v*）：构建并推送到容器镜像仓库（默认 GHCR，可切换到阿里云 ACR）
   - 多架构：`linux/amd64` + `linux/arm64`
   - 标签：`main`、`vX.Y.Z`、`sha-<short>`
-- 可选：tag（v*）后自动 Helm 部署到 ACK（默认关闭）
 
 非 Java 仓库：
 

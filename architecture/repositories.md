@@ -42,7 +42,7 @@ nav_order: 5
 | `docs` | Jekyll | 工程化 | 本文档站 |
 | `ai-boot-framework` | Java/Maven | 工程化 | 微服务脚手架（BOM/Starter/Archetype） |
 | `infra-templates` | GitHub Actions | 工程化 | 复用工作流（CI/CD） |
-| `infra-live` | Terraform/Helm | 工程化 | 阿里云 ACK 环境（Terraform）+ 整体发布（集中式 Deploy） |
+| `infra-live` | Terraform/Helm | 工程化 | 阿里云（VPC + ECS + 自建 k3s）（Terraform）+ 整体发布（集中式 Deploy） |
 | `law_tools_agent` | mono-repo | 历史/对照 | 原始项目形态（Playbook/Skills/服务编排规范的来源） |
 
 ## law_tools_agent（原始项目）与多仓库的对应关系

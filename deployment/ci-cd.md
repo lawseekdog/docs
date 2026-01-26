@@ -28,7 +28,7 @@ LawSeekDog 的 Java 微服务采用“复用工作流”模式：
 
 - PR：构建（不推送镜像）
 - main/tag：构建并推送镜像到容器镜像仓库（默认 GHCR，可切换到阿里云 ACR）
-- 可选：tag（v*）后自动 Helm 部署到 ACK（需显式开启）
+- 部署：推荐由 `infra-live` 统一执行（避免每个业务仓库都持有部署凭据）
 
 ## 2) 镜像命名与标签
 
@@ -93,35 +93,16 @@ permissions:
 - Java 服务 CI 不上传构建制品（以容器镜像为交付物）
 - 默认不启用 Actions Cache（Maven/Docker），避免缓存也占用配额
 
-## 5) 可选：Tag 自动部署到 ACK（Helm）
-
-工作流可在推送 `v*` Tag 后自动部署到 ACK（默认关闭）。
-
-在**业务仓库**配置 Variables：
-
-- `CI_DEPLOY_ON_TAG=true`
-- `ALIYUN_ACK_CLUSTER_ID=<your-cluster-id>`
-
-可选 Variables（按需）：
-
-- `ALIYUN_ACK_PRIVATE_IP=true|false`
-- `ALIYUN_ACK_API_ENDPOINT=https://cs.cn-hangzhou.aliyuncs.com`
-
-默认使用仓库内 Helm Chart：`deploy/helm`，并自动注入：
-
-- `image.repository=<registry>/<image_name>`
-- `image.tag=<git tag>`
-
-## 6) 集中式部署（infra-live，推荐用于“私有仓库 + 无法用组织级 Secrets”的场景）
+## 5) 集中式部署（infra-live，推荐用于“私有仓库 + 无法用组织级 Secrets”的场景）
 
 当组织无法对私有仓库使用 Organization secrets（套餐限制）时，把“部署凭据”分散到每个业务仓库会非常痛苦。
 
 因此我们新增了 `lawseekdog/infra-live`：
 
 - 业务仓库：只负责构建并推送镜像（CI 产物=镜像）
-- `infra-live`：集中持有阿里云/集群凭据，负责“整体发布”（见 `deployment/aliyun-ack.md`）
+- `infra-live`：集中持有阿里云凭据与集群 SSH 凭据，负责“整体发布”（见 `deployment/aliyun-ack.md`）
 
 这样做的收益：
 
-- 阿里云/ACK 密钥只在一个仓库配置
+- 阿里云/部署密钥只在一个仓库配置
 - 业务仓库仍可保持最小 CI 入口（引用 `infra-templates`）

@@ -10,8 +10,8 @@ nav_order: 99
 
 `infra-live` 是“环境与交付”仓库：
 
-- 负责在阿里云创建 ACK 等基础设施（Terraform）
-- 负责把各微服务部署到 ACK（集中式 Helm 发布）
+- 负责在阿里云创建运行环境（VPC + ECS + 自建 k3s）（Terraform）
+- 负责把各微服务部署到自建集群（集中式 Helm 发布，SSH 到 master 执行）
 
 它与 `infra-templates` 的分工：
 
@@ -20,14 +20,14 @@ nav_order: 99
 
 ## 目录结构
 
-- `infra-live/terraform/`：VPC + ACK + NodePool（最小闭环）
+- `infra-live/terraform/`：VPC + ECS + k3s（最小闭环）
 - `infra-live/deploy/`：服务清单 + 公共 values + Deploy 工作流
 
 ## 关键工作流
 
 - `infra-live/.github/workflows/terraform.yml`
   - push/PR：fmt + init + validate（不做 plan，避免缺少 tfvars/凭据导致失败）
-  - workflow_dispatch：支持 `plan/apply/destroy`；并可覆盖 `create_node_pool=false` 以释放计算资源（需要 repo secrets 的阿里云凭据）
+  - workflow_dispatch：支持 `plan/apply/destroy`；并可覆盖 `create_instances=false` 以释放计算资源（需要 repo secrets 的阿里云凭据）
 - `infra-live/.github/workflows/deploy.yml`
   - workflow_dispatch：按指定 `image_tag` 统一部署全部服务（从各服务仓库拉 Helm chart）
   - 通过 `CI_REGISTRY_PROVIDER` 选择镜像仓库（`aliyun-acr` 或 `ghcr`）
@@ -36,13 +36,18 @@ nav_order: 99
 
 Variables：
 
-- `ALIYUN_REGION_ID`
-- `ALIYUN_ACK_CLUSTER_ID`
-- （可选）`ALIYUN_OIDC_PROVIDER_ARN` / `ALIYUN_ROLE_TO_ASSUME`
+- `ALIYUN_REGION_ID`（用于镜像推送/registry 配置）
+- `SSH_PUBLIC_KEY`（Terraform：创建 ECS KeyPair）
+- `K8S_MASTER_PUBLIC_IP`（Terraform apply 后自动写入；Deploy 目标）
+- `K8S_SSH_USER`（默认 `root`）
+- `CI_REGISTRY_PROVIDER`（`ghcr` 或 `aliyun-acr`）
+- `ALIYUN_ACR_LOGIN_SERVER`（当使用 `aliyun-acr` 时需要）
 
 Secrets：
 
 - `GH_ORG_TOKEN`：checkout 私有服务仓库（仅部署时需要）
 - `ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`（未使用 OIDC 时）
+- `K8S_SSH_PRIVATE_KEY`：Deploy SSH 到 master
 - （可选）`GH_PACKAGES_USERNAME` / `GH_PACKAGES_TOKEN`：创建 `ghcr-pull` 拉取 secret（私有 GHCR 镜像）
+- （可选）`ALIYUN_ACR_USERNAME` / `ALIYUN_ACR_PASSWORD`：创建 `acr-pull` 拉取 secret（私有 ACR 镜像）
 - （可选）`INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（让 `/internal/**` 互调一致）
