@@ -62,6 +62,7 @@ terraform output ack_cluster_id
 推荐直接用内置的 tfvars：
 
 - `infra-live/terraform/env/mvp-spot.tfvars`
+- 如果你当前账号的 CR/ACR 开通链路不通，先用：`infra-live/terraform/env/mvp-spot-noacr.tfvars`（跳过 ACR/CR 资源，先把 ACK 集群跑通）
 
 并且提供一个开关用于“释放计算资源但保留 ACK/VPC 等底座”：
 
@@ -72,6 +73,18 @@ terraform output ack_cluster_id
 1) `Terraform (Aliyun)` → `apply`，选择 `tfvars=env/mvp-spot.tfvars`
 2) 需要释放计算资源时：同一个工作流 `apply`，额外填 `create_node_pool=false`
 3) 需要彻底清理（含 VPC/ACK）：`Terraform (Aliyun)` → `destroy`
+
+## 1.2) ACK 账号侧一次性前置（RAM 角色授权/服务开通）
+
+如果 `Terraform apply` 创建 ACK 报错类似：
+
+- `InvalidRamRole.NotFound` / `AliyunCSManagedKubernetesRole is not authorized for ack`
+- `AddonRoleNotAuthorized`（提示一串 `ram.console.aliyun.com/role/authorize?...` 链接）
+- `ErrorNotEnabled please enable cskpro container service before creating cluster`
+
+这是阿里云 ACK 的一次性前置：需要在阿里云控制台完成 **ACK 服务开通** 与 **RAM 服务角色授权**（通常点一次授权即可）。
+
+做完后，重新触发 `infra-live` 的 `Terraform (Aliyun)` → `apply` 即可继续创建集群。
 
 ## 2) 整体发布（Deploy 工作流）
 
