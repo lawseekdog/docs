@@ -50,6 +50,20 @@ kubectl -n lawseekdog port-forward svc/onlyoffice-documentserver 18010:80
 
 如需公网/域名访问，请在集群侧自行提供 Ingress/反代，并设置 `templates-service` 的 `TEMPLATES_ONLYOFFICE_PUBLIC_URL`（对应 `templates.onlyoffice.public-url`）。
 
+## MinIO（重要）
+
+前端下载附件使用的是 `GET /api/v1/files/{fileId}/download-url` 返回的 MinIO **预签名 URL**。因此：
+
+- MinIO 必须有一个浏览器可访问的公网 endpoint
+- `files-service` 需要配置 `MINIO_PUBLIC_ENDPOINT`（用于生成预签名 URL 的 host）
+
+在 `infra-live` 的默认部署里：
+
+- `addons/minio.yaml` 使用 k3s 的 ServiceLB 暴露 `9000/9001`（Node 公网 IP + 端口）
+- Deploy 工作流会把 `MINIO_PUBLIC_ENDPOINT` 默认写成 `${master_public_ip}:9000`（写入 `lawseekdog-secrets`，所有服务通过 `envFrom` 注入）
+
+注意：需要在阿里云安全组放通 `9000/9001`（Terraform 已包含规则）。
+
 ## 运行所需的变量/密钥（Repo-level）
 
 Variables：
