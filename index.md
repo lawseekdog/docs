@@ -109,5 +109,9 @@ flowchart LR
   ai -.-> es
   ai -.-> neo4j
 
-  cr[(Container Registry<br/>GHCR / Aliyun ACR)] --> k8s
+  %% Mermaid 不支持直接连到 subgraph（会触发 syntax error）；改为连接到 subgraph 内的工作负载节点。
+  cr[(Container Registry<br/>GHCR / Aliyun ACR)] --> svc
+  cr --> ai
+  cr --> col
+  cr --> fePod
 ```
