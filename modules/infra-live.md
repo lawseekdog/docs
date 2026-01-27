@@ -72,6 +72,11 @@ kubectl -n lawseekdog port-forward svc/onlyoffice-documentserver 18010:80
 - `addons/postgres.yaml` 内置了一个 initdb `ConfigMap`，首次初始化数据目录时会创建各微服务数据库
 - Deploy 工作流在发布时也会做一次“确保 DB 存在”（`kubectl exec psql ...`），用于兼容后续新增服务/数据库的情况
 
+## 资源与稳定性（MVP 单机）
+
+- `infra-live/terraform/env/mvp-k3s-spot.tfvars` 默认使用 `ecs.g7.xlarge`（4c16g），更适合“全量微服务 + ES + MinIO + Qdrant”一键起环境
+- Deploy 会在 `lawseekdog-secrets` 中写入默认 `JAVA_TOOL_OPTIONS=-Xms128m -Xmx512m`，避免多 Spring Boot 服务并发启动导致节点 OOM
+
 ## Frontend 访问（www.lawseekdog.com）
 
 `frontend` 服务默认是 `ClusterIP`，通过 k3s 自带的 Traefik Ingress 暴露到公网：
