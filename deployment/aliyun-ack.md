@@ -67,8 +67,8 @@ Variables：
 - （可选）`TF_STATE_TABLESTORE_ENDPOINT` / `TF_STATE_TABLESTORE_TABLE`：启用 state lock
 - `CI_REGISTRY_PROVIDER=ghcr|aliyun-acr`（默认 ghcr）
 - `ALIYUN_ACR_LOGIN_SERVER`：当使用 `aliyun-acr` 时需要（例如 `registry.cn-guangzhou.aliyuncs.com`）
-  - `K8S_SSH_USER`：默认 `root`
-  - `K8S_MASTER_PUBLIC_IP`：可选（Deploy 会从 Terraform state 自动解析；写入该变量仅用于兜底/加速）
+- `K8S_SSH_USER`：默认 `root`
+- `K8S_MASTER_PUBLIC_IP`：可选（Deploy 会从 Terraform state 自动解析；写入该变量仅用于兜底/加速）
 
 Secrets：
 
