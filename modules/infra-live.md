@@ -30,8 +30,13 @@ nav_order: 99
   - workflow_dispatch：支持 `plan/apply/destroy`；并可覆盖 `create_instances=false` 以释放计算资源（需要 repo secrets 的阿里云凭据）
 - `infra-live/.github/workflows/deploy.yml`
   - workflow_dispatch：按指定 `image_tag` 统一部署全部服务（从各服务仓库拉 Helm chart）
+  - 可选 `addons`：统一安装基础设施组件（Postgres/MinIO/Qdrant/Elasticsearch/api-gateway）
   - 通过 `CI_REGISTRY_PROVIDER` 选择镜像仓库（`ghcr` 或 `aliyun-acr`）
   - 部署阶段会创建/刷新 `imagePullSecret`，并在最后执行 `kubectl rollout status` 校验发布健康
+
+- `infra-live/.github/workflows/publish-base-images.yml`
+  - 发布基础设施镜像到 GHCR（用于国内网络下避免拉取 docker.io 不稳定）
+  - 当前覆盖：postgres、minio、qdrant、elasticsearch、nginx
 
 ## 运行所需的变量/密钥（Repo-level）
 
