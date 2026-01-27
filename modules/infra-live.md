@@ -72,6 +72,25 @@ kubectl -n lawseekdog port-forward svc/onlyoffice-documentserver 18010:80
 - `addons/postgres.yaml` 内置了一个 initdb `ConfigMap`，首次初始化数据目录时会创建各微服务数据库
 - Deploy 工作流在发布时也会做一次“确保 DB 存在”（`kubectl exec psql ...`），用于兼容后续新增服务/数据库的情况
 
+## Frontend 访问（www.lawseekdog.com）
+
+`frontend` 服务默认是 `ClusterIP`，通过 k3s 自带的 Traefik Ingress 暴露到公网：
+
+- Ingress：`infra-live/deploy/values/services/frontend.yaml`
+  - `ingress.enabled=true`
+  - `ingress.className=traefik`
+  - `ingress.host=www.lawseekdog.com`
+
+## DNS（Spot 场景自动跟随公网 IP）
+
+Spot master 公网 IP 会变化。`infra-live/terraform/` 提供可选的 AliDNS 记录自动更新：
+
+- `enable_dns=true`
+- `domain_name="lawseekdog.com"`
+- `subdomain="www"`
+
+配置在：`infra-live/terraform/env/mvp-k3s-spot.tfvars`
+
 ## 运行所需的变量/密钥（Repo-level）
 
 Variables：
