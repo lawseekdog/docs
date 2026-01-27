@@ -78,7 +78,7 @@ Variables：
 
 - `ALIYUN_REGION_ID`（用于镜像推送/registry 配置）
 - `SSH_PUBLIC_KEY`（Terraform：创建 ECS KeyPair）
-- `K8S_MASTER_PUBLIC_IP`（Terraform apply 后自动写入；Deploy 目标）
+- `K8S_MASTER_PUBLIC_IP`（Terraform apply 后自动写入；Deploy 目标；变量缺失时 Deploy 会自动从 Terraform state 解析）
 - `K8S_SSH_USER`（默认 `root`）
 - `CI_REGISTRY_PROVIDER`（`ghcr` 或 `aliyun-acr`）
 - `ALIYUN_ACR_LOGIN_SERVER`（当使用 `aliyun-acr` 时需要）
