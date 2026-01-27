@@ -28,6 +28,7 @@ nav_order: 99
 - `infra-live/.github/workflows/terraform.yml`
   - push/PR：fmt + init + validate（不做 plan，避免缺少 tfvars/凭据导致失败）
   - workflow_dispatch：支持 `plan/apply/destroy`；并可覆盖 `create_instances=false` 以释放计算资源（需要 repo secrets 的阿里云凭据）
+  - apply 后会把 `K8S_MASTER_PUBLIC_IP`/`K8S_MASTER_PRIVATE_IP` 写入 repo variables；当实例被释放/回收导致 IP 为空时，会删除这些变量以避免“陈旧 IP”
 - `infra-live/.github/workflows/deploy.yml`
   - workflow_dispatch：按指定 `image_tag` 统一部署全部服务（从各服务仓库拉 Helm chart）
   - 可选 `addons`：统一安装基础设施组件（Postgres/MinIO/Qdrant/Elasticsearch/api-gateway/OnlyOffice Document Server）
@@ -63,6 +64,13 @@ kubectl -n lawseekdog port-forward svc/onlyoffice-documentserver 18010:80
 - Deploy 工作流会把 `MINIO_PUBLIC_ENDPOINT` 默认写成 `${master_public_ip}:9000`（写入 `lawseekdog-secrets`，所有服务通过 `envFrom` 注入）
 
 注意：需要在阿里云安全组放通 `9000/9001`（Terraform 已包含规则）。
+
+## Postgres（重要）
+
+在 `infra-live` 的默认部署里：
+
+- `addons/postgres.yaml` 内置了一个 initdb `ConfigMap`，首次初始化数据目录时会创建各微服务数据库
+- Deploy 工作流在发布时也会做一次“确保 DB 存在”（`kubectl exec psql ...`），用于兼容后续新增服务/数据库的情况
 
 ## 运行所需的变量/密钥（Repo-level）
 
