@@ -23,7 +23,7 @@ nav_order: 4
 
 1) 运行 `infra-live` 的 `Bootstrap Terraform Backend (OSS)` 工作流（创建 OSS bucket + 可选 TableStore 锁表，并写入 `TF_STATE_*` Variables）
 2) 配置 `infra-live` 的 Repo-level Variables/Secrets（见 1.1）
-3) 运行 `Terraform (Aliyun)` 工作流，选择 `apply`（创建 VPC + ECS + k3s，并自动写入 `K8S_MASTER_PUBLIC_IP`）
+3) 运行 `Terraform (Aliyun)` 工作流，选择 `apply`（创建 VPC + ECS + k3s；Deploy 会从 Terraform state 自动解析 master IP，不强依赖 `K8S_MASTER_PUBLIC_IP` 变量）
 
 在中国大陆网络环境下的额外注意：
 
@@ -67,8 +67,8 @@ Variables：
 - （可选）`TF_STATE_TABLESTORE_ENDPOINT` / `TF_STATE_TABLESTORE_TABLE`：启用 state lock
 - `CI_REGISTRY_PROVIDER=ghcr|aliyun-acr`（默认 ghcr）
 - `ALIYUN_ACR_LOGIN_SERVER`：当使用 `aliyun-acr` 时需要（例如 `registry.cn-guangzhou.aliyuncs.com`）
-- `K8S_SSH_USER`：默认 `root`
-- `K8S_MASTER_PUBLIC_IP`：Terraform apply 后自动写入（Deploy 目标）
+  - `K8S_SSH_USER`：默认 `root`
+  - `K8S_MASTER_PUBLIC_IP`：可选（Deploy 会从 Terraform state 自动解析；写入该变量仅用于兜底/加速）
 
 Secrets：
 
