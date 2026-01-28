@@ -12,7 +12,7 @@ templates-service 提供模板与文书相关能力：
 
 - 模板 CRUD / 版本管理
 - 文书生成任务（生成/交付物）
-- 文档编辑能力的对外代理（当前转发到 ai-engine 的 python-docx 编辑器）
+- 文档编辑能力（/api/v1/document-editor/**，本地 Apache POI 实现；AI 修改建议由 ai-engine skill 产出）
 - seed 导入（由 collector-service 分发）
 
 ## 技术栈
@@ -29,18 +29,14 @@ templates-service 提供模板与文书相关能力：
 - `SampleDocumentController`：示例文档
 - `DocumentEditorController`：文档编辑器代理（见下文）
 
-## 文档编辑器代理（重要）
+## 文档编辑器（重要）
 
-当前 `DocumentEditorController` 的实现是“代理模式”：
+`DocumentEditorController` 对前端暴露：`/api/v1/document-editor/**`
 
-- 对前端暴露：`/api/v1/document-editor/**`
-- 对内转发：`ai-engine` 的 `/internal/document-editor/**`
-- 通过 `X-Internal-Api-Key` 鉴权（由配置 `ai.boot.client.internal-api-key` 注入）
+当前实现为“本地编辑 + AI 建议”：
 
-这样做的目的：
-
-- 复用 Python 侧 `python-docx` 的段落编辑能力
-- 对前端保持统一的 ApiResponse 协议与鉴权入口
+- docx 的解析/替换/插入/撤销/保存：templates-service 本地 Apache POI + files-service（不再依赖 ai-engine 的内部 doc-editor）
+- AI 修改建议：`/api/v1/document-editor/{fileId}/ai-modify` 调用 ai-engine 的 `document-editing` 技能，仅返回修改建议（changes），具体写入由 `apply-changes/save` 完成
 
 ## 对内 API（/internal）
 
