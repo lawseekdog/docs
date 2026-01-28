@@ -1,161 +1,181 @@
----
-title: 系统架构概览
-parent: 架构
-nav_order: 1
----
+# 系统架构概览
 
-# 系统架构概览（以当前实现为准）
+## 整体架构
 
-本页描述 LawSeekDog 当前的整体架构与技术选型，并明确哪些能力“已落地/部分落地/规划中”。
-
-## 架构形态
-
-- 业务微服务：Java 21 + Spring Boot（基于 `ai-boot-framework` 的统一工程骨架）
-- AI 执行引擎：Python + FastAPI + LangGraph（skills + playbooks 驱动）
-- 种子分发：`collector-service` 负责把系统资源/Playbooks/结构化 seeds 推送到各服务的 `/internal/**` 接口
-- 入口网关：生产通常由 K8s Ingress / API Gateway 产品承接；`gateway-service` 当前更偏“样板/占位”，不应与入口网关混淆
-
-## 业务架构图（概览）
-
-```mermaid
-flowchart TB
-  FE[Frontend: Vue3 多端] --> CONS[consultations-service<br/>对话/SSE/卡片]
-  FE --> MAT[matter-service<br/>事项/待办/阶段]
-  FE --> FILES[files-service<br/>文件/对象存储]
-  FE --> TPL[templates-service<br/>模板/文书]
-  FE --> KNOW[knowledge-service<br/>知识/检索]
-  FE --> MEM[memory-service<br/>记忆/事实]
-  FE --> AUTH[auth-service]
-  FE --> USER[user-service]
-  FE --> ORG[organization-service]
-  FE --> BILL[billing-service]
-  FE --> NOTIF[notification-service]
-  FE --> PLAT[platform-service<br/>配置/Playbook]
-
-  CONS -->|NDJSON| AIE[ai-engine<br/>LangGraph/skills]
-  MAT -->|internal HTTP| AIE
-  TPL -->|internal HTTP| AIE
-
-  AIE -->|internal HTTP| KNOW
-  AIE -->|internal HTTP| MEM
-  AIE -->|internal HTTP| FILES
-  AIE -->|internal HTTP| MAT
-  AIE -->|internal HTTP| PLAT
-
-  COL[collector-service<br/>seed packages] -->|internal HTTP| PLAT
-  COL -->|internal HTTP| KNOW
-  COL -->|internal HTTP| TPL
-```
-
-ASCII 兜底（便于 Pages 不渲染 Mermaid 时阅读）：
+LawSeekDog 是一个智能法律服务平台，采用微服务架构，核心由 AI 引擎驱动，支持法律咨询、案件管理、文书生成等全流程服务。
 
 ```
-Frontend(Vue3)
-  ├─ REST/SSE → consultations-service ── NDJSON → ai-engine(LangGraph)
-  ├─ REST     → matter-service  ── internal HTTP ↔ ai-engine
-  ├─ REST     → templates-service ─ internal HTTP ↔ ai-engine
-  ├─ REST     → files-service
-  ├─ REST     → knowledge-service
-  ├─ REST     → memory-service
-  └─ REST     → platform/auth/user/org/billing/notification
-
-collector-service（seed packages）
-  └─ internal HTTP → platform/knowledge/templates/...
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Frontend (React)                                │
+│                         律师端 / 客户端 / 管理后台                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           API Gateway (Nginx)                                │
+│                    路由 / 负载均衡 / JWT 验证 / 限流                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+        ┌─────────────────────────────┼─────────────────────────────┐
+        │                             │                             │
+        ▼                             ▼                             ▼
+┌───────────────┐           ┌───────────────┐           ┌───────────────┐
+│  Auth Service │           │ User Service  │           │  Org Service  │
+│   认证授权     │           │   用户管理     │           │   组织管理     │
+└───────────────┘           └───────────────┘           └───────────────┘
+        │                             │                             │
+        └─────────────────────────────┼─────────────────────────────┘
+                                      │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            业务服务层                                        │
+├─────────────────┬─────────────────┬─────────────────┬─────────────────────┤
+│ Consultations   │ Matter Service  │ Templates       │ Billing Service     │
+│ 咨询会话        │ 事项管理        │ 文书模板        │ 计费订阅            │
+└─────────────────┴─────────────────┴─────────────────┴─────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           AI Engine (Python)                                 │
+│              LangGraph Agent / Skill 编排 / Playbook 驱动                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+        ┌─────────────────────────────┼─────────────────────────────┐
+        │                             │                             │
+        ▼                             ▼                             ▼
+┌───────────────┐           ┌───────────────┐           ┌───────────────┐
+│Knowledge Svc  │           │ Memory Service│           │ Files Service │
+│ 知识库检索     │           │ 记忆/画像      │           │ 文件存储解析   │
+└───────────────┘           └───────────────┘           └───────────────┘
+        │                             │                             │
+        ▼                             ▼                             ▼
+┌───────────────┐           ┌───────────────┐           ┌───────────────┐
+│  Weaviate     │           │ PostgreSQL    │           │    MinIO      │
+│  + ES         │           │               │           │               │
+└───────────────┘           └───────────────┘           └───────────────┘
 ```
 
-## 技术架构图（运行时/部署视角）
+## 技术选型
 
-```mermaid
-flowchart LR
-  subgraph k8s[Kubernetes]
-    ingress[Ingress/Gateway] --> svc[Java Services<br/>Spring Boot]
-    ingress --> fePod[frontend]
-    svc -->|internal HTTP| ai[ai-engine<br/>FastAPI + LangGraph]
-    svc -->|internal HTTP| col[collector-service<br/>FastAPI]
-  end
+### 后端服务
 
-  subgraph data[Data Plane]
-    pg[(PostgreSQL<br/>per-service)]
-    minio[(MinIO/S3)]
-    es[(Elasticsearch<br/>optional)]
-    neo4j[(Neo4j<br/>optional)]
-  end
-
-  svc --> pg
-  ai --> pg
-  svc --> minio
-  svc -.-> es
-  svc -.-> neo4j
-```
-
-## 技术选型（现状）
-
-### 后端
-
-| 组件 | 当前实现 | 说明 |
-|------|----------|------|
-| 业务微服务 | Java 21 + Spring Boot 3.3 | 大多数对外业务能力都在 Java 服务内 |
-| AI 执行引擎 | Python >= 3.11 + FastAPI + LangGraph | `ai-engine`，对外提供 internal agent 执行接口（含流式 NDJSON） |
-| 数据库 | PostgreSQL + Flyway | 业务服务模板默认 Postgres；各服务独立库 |
-| 对象存储 | MinIO/S3 | 由 `files-service` 适配与抽象 |
-| 搜索（可选） | Elasticsearch | `knowledge-service` 的检索后端；支持 keyword/vector/hybrid（向量 embedding 走 OpenAI 兼容 API） |
-| 图谱（可选） | Neo4j | `knowledge-service` 的 GraphStore；用于 GraphRAG 扩展召回 |
-
-说明（避免误差）：
-
-- 本项目当前未在 Java 服务中引入 Redis 作为硬依赖（以代码为准）。
-- 向量检索当前走 Elasticsearch kNN（不是 Weaviate/Qdrant）；旧文档将逐步清理漂移。
+| 组件 | 技术栈 | 说明 |
+|------|--------|------|
+| Java 服务 | Spring Boot 3.3 + JDK 21 | 业务服务主体 |
+| AI 引擎 | Python 3.12 + FastAPI + LangGraph | 智能决策核心 |
+| 数据库 | PostgreSQL 16 | 主数据存储 |
+| 缓存 | Redis 7 | 会话/缓存 |
+| 搜索 | Elasticsearch 8 | 全文检索 |
+| 向量库 | Weaviate（可选） | 语义检索（知识库） |
+| 对象存储 | MinIO | 文件存储 |
+| 消息队列 | Redis Streams | 异步任务 |
 
 ### 前端
 
-| 组件 | 当前实现 |
-|------|----------|
-| 框架 | Vue 3 + TypeScript |
-| 构建 | Vite |
+| 组件 | 技术栈 |
+|------|--------|
+| 框架 | React 18 + TypeScript |
+| 构建 | Vite 5 |
 | 样式 | TailwindCSS |
-| 状态 | Pinia |
-| 路由 | Vue Router |
-| E2E | Playwright |
+| 状态 | Zustand |
+| 路由 | React Router 6 |
 
-### AI
+### AI/ML
 
-| 组件 | 当前实现 |
-|------|----------|
-| Agent 框架 | LangGraph（支持 interrupt/human_review） |
-| 模型调用 | OpenAI 兼容协议（默认可走 OpenRouter；具体模型以配置为准） |
-| 流程配置 | Playbooks（JSON）+ Skills（目录化：`SKILL.md`/schema/scripts） |
+| 组件 | 说明 |
+|------|------|
+| LLM 网关 | OpenRouter |
+| 默认模型 | DeepSeek V3.2 |
+| Embedding | Qwen3-Embedding-8B (1024维) |
+| Agent 框架 | LangGraph |
 
-## 核心设计原则（工程与协议）
+## 核心设计原则
 
-### 1) API 边界：对外与对内严格分离
+### 1. 分层架构
 
-- 对外 API：`/api/v1/**`
-- 对内 API：`/internal/**`（Service-to-Service 调用）
-- 内部调用鉴权：`X-Internal-Api-Key`（由部署环境统一注入，Java 与 Python 侧均支持）
+所有 Java 服务遵循严格分层：
+
+```
+API Layer (Controller)
+    ↓
+Application Layer (Service)
+    ↓
+Domain Layer (Entity, Repository Interface)
+    ↑
+Infrastructure Layer (JPA, External Client)
+```
+
+依赖方向：`API → Application → Domain ← Infrastructure`
+
+### 2. 统一接口规范
+
+- 对外接口：`/api/v1/**`
+- 内部接口：`/internal/**`
 - 统一返回体：`ApiResponse<T>` / `PageResponse<T>`
 
-### 2) DDD 分层：避免“业务逻辑散落 Controller”
-
-Java 服务目录约束：
-
-```
-api/                # HTTP 协议层
-application/        # 应用编排层（事务边界/流程编排）
-domain/             # 领域层（实体/值对象/仓储接口）
-infrastructure/     # 基础设施（JPA/外部服务实现）
+```json
+{
+  "code": 0,
+  "message": "OK",
+  "data": { ... }
+}
 ```
 
-### 3) 流式协议：SSE（前端）+ NDJSON（服务间）
+### 3. 可观测性
 
-- `consultations-service` 对前端使用 SSE（`text/event-stream`）
-- `ai-engine` 对服务间使用 NDJSON（`application/x-ndjson`）事件流
-- “卡片中断”统一为 `control.action == ask_user`，由服务端停止当前流并等待 `/resume`
+- 日志：Log4j2，包含 `request_id`, `user_id`, `organization_id`
+- 指标：Prometheus + Actuator (`/internal/actuator`)
+- 链路：OpenTelemetry (规划中)
 
-### 4) 可观测性与可运维
+### 4. 幂等性
 
-由 `ai-boot-framework` 统一提供（各服务可按需关闭/收敛）：
+涉及扣费、任务提交等写操作必须支持 `Idempotency-Key` 头。
 
-- Actuator：默认在 `/internal/actuator`
-- Prometheus 指标：通过 Actuator 暴露
-- OpenTelemetry：OTLP 输出（生产环境对接 Collector）
-- 日志：Log4j2（建议透传 `X-Request-Id`）
+## 服务通信
+
+### 同步调用
+
+服务间通过 HTTP REST 调用，使用 `shared-libs` 中的 `*ServiceClient`：
+
+```java
+// 示例：调用 User Service
+UserServiceClient userClient = new UserServiceClient(baseUrl);
+UserInfo user = userClient.getUser(userId);
+```
+
+### 异步通信
+
+使用 Redis Streams 进行异步消息传递：
+
+- 通知推送
+- 异步任务处理
+- 事件广播
+
+## 数据存储策略
+
+| 数据类型 | 存储 | 说明 |
+|----------|------|------|
+| 业务数据 | PostgreSQL | 事务一致性 |
+| 会话缓存 | Redis | 高性能读写 |
+| 文件内容 | MinIO | 对象存储 |
+| 全文索引 | Elasticsearch | 法规/案例检索 |
+| 语义向量 | Weaviate | 知识库 RAG |
+| 记忆事实 | PostgreSQL | 偏好/摘要/证据线索（与 matter 分层） |
+
+## 安全设计
+
+### 认证
+
+- JWT Token（Access + Refresh）
+- Token 有效期：Access 30min，Refresh 7d
+
+### 授权
+
+- RBAC 角色权限模型
+- 资源级别权限控制
+- 组织隔离
+
+### 数据安全
+
+- 敏感数据加密存储
+- 传输层 TLS
+- 审计日志

@@ -1,103 +1,114 @@
----
-title: README
-nav_exclude: true
-search_exclude: true
----
+# LawSeekDog 系统文档
 
-# LawSeekDog 技术文档（docs 仓库）
+> 智能法律服务平台技术文档中心
 
-本仓库用于发布 LawSeekDog 的系统文档站点（GitHub Pages）：
+[![GitHub Pages](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://lawseekdog.github.io/docs/)
 
-- 站点地址：<https://lawseekdog.github.io/docs/>
-- 首页：[`index.md`](./index.md)
+## 📚 文档导航
 
-文档内容以当前仓库代码现状为准；涉及“规划/待实现”的能力会明确标注，避免把旧实现/设想写成既成事实。
+### 系统架构
+- [系统架构概览](./architecture/overview.md) - 整体架构设计与技术选型
+- [微服务拓扑](./architecture/microservices.md) - 服务间依赖与通信
+- [数据流架构](./architecture/data-flow.md) - 数据流转与存储设计
 
-## 文档导航
-
-### 架构
-
-- [系统架构概览](./architecture/overview.md)
-- [项目进度与现状](./architecture/progress.md)
-- [微服务拓扑与依赖](./architecture/microservices.md)
-- [数据流与协议（SSE/NDJSON/Internal API）](./architecture/data-flow.md)
-- [仓库结构与拆分映射（law_tools_agent → 多仓库）](./architecture/repositories.md)
-
-### 模块（按仓库/服务）
-
-- AI 侧
-  - [ai-engine（AI 执行引擎）](./modules/ai-engine.md)
-  - [collector-service（Seed Packages 分发）](./modules/collector-service.md)
-- 业务侧（Java 微服务）
-  - [consultations-service](./modules/consultations-service.md)
-  - [matter-service](./modules/matter-service.md)
-  - [knowledge-service](./modules/knowledge-service.md)
-  - [memory-service](./modules/memory-service.md)
-  - [files-service](./modules/files-service.md)
-  - [templates-service](./modules/templates-service.md)
-  - [platform-service](./modules/platform-service.md)
-  - [auth-service](./modules/auth-service.md)
-  - [user-service](./modules/user-service.md)
-  - [organization-service](./modules/organization-service.md)
-  - [billing-service](./modules/billing-service.md)
-  - [notification-service](./modules/notification-service.md)
-  - [gateway-service](./modules/gateway-service.md)
-- 工程化
-  - [ai-boot-framework（脚手架/BOM/Starter/Archetype）](./modules/ai-boot-framework.md)
-  - [infra-templates（复用 CI/CD）](./modules/infra-templates.md)
+### 核心模块设计
+| 模块 | 说明 | 文档 |
+|------|------|------|
+| AI Engine | AI 智能引擎（技能编排、Playbook 驱动） | [设计文档](./modules/ai-engine.md) |
+| Matter Service | 事项管理（案件全生命周期） | [设计文档](./modules/matter-service.md) |
+| Consultations Service | 咨询会话（实时对话、卡片交互） | [设计文档](./modules/consultations-service.md) |
+| Knowledge Service | 知识库（法规、案例、要素检索） | [设计文档](./modules/knowledge-service.md) |
+| Memory Service | 记忆服务（用户画像、事实提取） | [设计文档](./modules/memory-service.md) |
+| Auth Service | 认证授权（JWT、RBAC） | [设计文档](./modules/auth-service.md) |
+| User Service | 用户管理 | [设计文档](./modules/user-service.md) |
+| Organization Service | 组织/律所管理 | [设计文档](./modules/organization-service.md) |
+| Files Service | 文件存储（MinIO、解析） | [设计文档](./modules/files-service.md) |
+| Templates Service | 文书模板 | [设计文档](./modules/templates-service.md) |
+| Billing Service | 计费订阅 | [设计文档](./modules/billing-service.md) |
+| Notification Service | 通知推送 | [设计文档](./modules/notification-service.md) |
+| Platform Service | 平台配置 | [设计文档](./modules/platform-service.md) |
+| Collector Service | 种子数据/资源包管理 | [设计文档](./modules/collector-service.md) |
 
 ### 业务流程
-
-- [咨询 → 事项（Consultation → Matter）](./flows/consultation-to-matter.md)
-- [诉讼流程（示例：民事起诉）](./flows/litigation-workflow.md)
-- [非诉流程（示例：合同审查）](./flows/non-litigation-workflow.md)
-- [Playbook 配置规范（v2）](./flows/playbook-phases.md)
+- [咨询到事项转化流程](./flows/consultation-to-matter.md)
+- [诉讼案件处理流程](./flows/litigation-workflow.md)
+- [非诉业务处理流程](./flows/non-litigation-workflow.md)
+- [Playbook 阶段设计](./flows/playbook-phases.md)
 
 ### 核心实现
-
 - [Skill 技能系统](./implementation/skill-system.md)
 - [Planner 决策引擎](./implementation/planner-engine.md)
-- [卡片交互机制（ask_user / resume）](./implementation/card-interaction.md)
-- [知识检索与 GraphRAG](./implementation/knowledge-rag.md)
-- [记忆服务（事实/召回）](./implementation/memory-extraction.md)
-- [Seed Packages（分发/导入/回归）](./implementation/seed-packages.md)
+- [卡片交互机制](./implementation/card-interaction.md)
+- [知识检索 RAG](./implementation/knowledge-rag.md)
+- [记忆提取与召回](./implementation/memory-extraction.md)
 
 ### API 参考
+- [API 设计规范](./api/conventions.md)
+- [认证与授权](./api/authentication.md)
+- [OpenAPI 文档](./api/openapi.md)
 
-- [API 约定（Google REST + 统一返回体）](./api/conventions.md)
-- [认证与鉴权（JWT + Internal API Key）](./api/authentication.md)
-- [OpenAPI 与内部运维端点](./api/openapi.md)
+### 部署运维
+- [本地开发环境](./deployment/local-dev.md)
+- [Docker Compose 部署](./deployment/docker-compose.md)
+- [生产环境部署](./deployment/production.md)
 
-### 部署与交付
-
-- [本地开发（单服务/多服务）](./deployment/local-dev.md)
-- [CI/CD（复用工作流 → 镜像构建/推送 + 可选 Helm 部署）](./deployment/ci-cd.md)
-- [Helm（部署到 K8s）](./deployment/helm.md)
-- [生产部署要点（配置/密钥/依赖）](./deployment/production.md)
-
-## 技术栈（以现状为准）
+## 🏗️ 技术栈
 
 ### 后端
-
-- Java 21 + Spring Boot 3.3（多数业务微服务）
-- Python >= 3.11 + FastAPI + LangGraph（AI 执行引擎/Seed 分发）
-- PostgreSQL + Flyway（各服务独立库；模板默认 Postgres，本地 `docker-compose.yml` 提供）
-- Elasticsearch（可选：knowledge-service 的 keyword/vector/hybrid 检索；向量由 OpenAI 兼容 Embedding API 生成）
-- Neo4j（可选：knowledge-service 的 GraphStore，用于 GraphRAG 扩展召回）
-- MinIO/S3（files-service 对象存储适配）
+- **Java 21** + Spring Boot 3.3
+- **Python 3.12** + FastAPI + LangGraph
+- **PostgreSQL** + Flyway 迁移
+- **Elasticsearch** 全文检索
+- **Weaviate** 向量数据库
+- **Rerank Service**（CrossEncoder + BM25）结果重排（可选）
+- **Redis** 缓存
+- **MinIO** 对象存储
 
 ### 前端
+- **React 18** + TypeScript
+- **Vite** 构建
+- **TailwindCSS** 样式
+- **Zustand** 状态管理
 
-- Vue 3 + TypeScript（`frontend` 仓库）
-- Vite + TailwindCSS
-- Pinia + Vue Router
-- Playwright（E2E）
+### AI/ML
+- **LangGraph** Agent 编排
+- **OpenRouter** LLM 网关
+- **DeepSeek V3** 默认模型
+- **Qwen3 Embedding** 向量化
 
-### AI
+## 📁 仓库结构
 
-- LangGraph（Agent/interrupt）
-- OpenAI 兼容协议模型调用（默认可走 OpenRouter；具体模型以配置为准）
+```
+docs/
+├── README.md                 # 本文件
+├── architecture/             # 架构设计
+├── modules/                  # 模块设计文档
+├── flows/                    # 业务流程
+├── implementation/           # 核心实现
+├── api/                      # API 参考
+└── deployment/               # 部署文档
+```
 
-## 相关仓库（组织：lawseekdog）
+## 🔗 相关仓库
 
-建议以「仓库结构与拆分映射」为入口：[`architecture/repositories.md`](./architecture/repositories.md)
+| 仓库 | 说明 |
+|------|------|
+| [ai-engine](https://github.com/lawseekdog/ai-engine) | AI 智能引擎 |
+| [matter-service](https://github.com/lawseekdog/matter-service) | 事项管理服务 |
+| [consultations-service](https://github.com/lawseekdog/consultations-service) | 咨询会话服务 |
+| [knowledge-service](https://github.com/lawseekdog/knowledge-service) | 知识库服务 |
+| [frontend](https://github.com/lawseekdog/frontend) | 前端应用 |
+| [e2e-tests](https://github.com/lawseekdog/e2e-tests) | E2E 测试用例与脚本 |
+| ... | 其他服务 |
+
+## 📝 贡献指南
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/xxx`)
+3. 提交更改 (`git commit -m 'Add xxx'`)
+4. 推送分支 (`git push origin feature/xxx`)
+5. 创建 Pull Request
+
+## 📄 License
+
+MIT License
