@@ -20,24 +20,17 @@ memory-service 目前以结构化存储为主：
 
 存储：Postgres（JPA + Flyway）。
 
-## 2) 对外/对内 API（摘录）
+## 2) 内部 API（摘录）
 
-对外（给前端/业务使用）：
+内部接口（给 ai-engine / 服务间调用）：
 
-- `POST /api/v1/memory/items`（upsert item）
-- `GET  /api/v1/memory/items`（list）
-- `POST /api/v1/memory/facts`（create fact）
-- `GET  /api/v1/memory/facts/{factId}`
-- `PUT  /api/v1/memory/facts/{factId}`
-- `DELETE /api/v1/memory/facts/{factId}`
-- `POST /api/v1/memory/facts/query`
-- `POST /api/v1/memory/facts/search`
-- `DELETE /api/v1/memory/sessions/{sessionId}/facts`
-- `POST /api/v1/memory/extract`（见“占位能力”）
-
-对内（给 ai-engine / 服务间调用）：
-
+- `POST /internal/memory/facts`（create fact）
+- `GET  /internal/memory/facts/{factId}`
+- `PUT  /internal/memory/facts/{factId}`
+- `DELETE /internal/memory/facts/{factId}`
+- `POST /internal/memory/store`（兼容接口）
 - `POST /internal/memory/recall`
+- `GET  /internal/memory/user/{userId}`（兼容接口）
 - `POST /internal/memory/extract`
 - `POST /internal/memory/migrate`
 - `GET  /internal/memory/users/{userId}/context`
@@ -57,7 +50,6 @@ memory-service 目前以结构化存储为主：
 
 memory-service 暴露了抽取入口：
 
-- `POST /api/v1/memory/extract`
 - `POST /internal/memory/extract`
 
 但当前实现返回空结果（占位），尚未集成 LLM/ai-engine 做真正的事实抽取：

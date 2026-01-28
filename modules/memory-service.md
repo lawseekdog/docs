@@ -20,20 +20,20 @@ memory-service 提供“事实（Fact）”的结构化存储与召回能力：
 - PostgreSQL（事实源）
 - 可选：Qdrant（向量索引，允许重建，best-effort）
 
-## 对外 API（/api/v1，摘录，当前实现）
+## 内部 API（/internal，摘录，当前实现）
 
-- `POST /api/v1/memory/facts`
-- `GET  /api/v1/memory/facts/{factId}`
-- `PUT  /api/v1/memory/facts/{factId}`
-- `DELETE /api/v1/memory/facts/{factId}`
+- `POST /internal/memory/facts`
+- `GET  /internal/memory/facts/{factId}`
+- `PUT  /internal/memory/facts/{factId}`
+- `DELETE /internal/memory/facts/{factId}`
 
 兼容接口（给旧调用方 / shared-libs 客户端）：
 
-- `POST /api/v1/memory/store`
-- `POST /api/v1/memory/recall`
-- `GET  /api/v1/memory/user/{userId}`
+- `POST /internal/memory/store`
+- `POST /internal/memory/recall`
+- `GET  /internal/memory/user/{userId}`
 
-## 对内 API（/internal，摘录）
+## 其他内部 API（/internal，摘录）
 
 - `POST /internal/memory/recall`
 - `GET  /internal/memory/users/{userId}/facts`
