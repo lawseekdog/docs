@@ -116,4 +116,13 @@ Secrets：
 - （推荐）`GH_PACKAGES_TOKEN`：私有 GHCR 拉取镜像（需要 `read:packages`；私有仓库通常还要 `repo`）
   - `GH_PACKAGES_USERNAME` 可选（未配置时 deploy 默认用触发人 `github.actor`）
   - 若你的 `GH_ORG_TOKEN` 同时具备 `read:packages`，也可复用它来拉取 GHCR
-- （可选）`INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（让 `/internal/**` 互调一致）
+- `INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（让 `/internal/**` 互调一致，必填）
+- `AI_BOOT_SECURITY_JWT_HMAC_SECRET`：Auth JWT HMAC secret（>=32 bytes，必填）
+- `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`：MinIO 根账号（必填）
+- `OPENROUTER_API_KEY` 或 `DEEPSEEK_API_KEY`：LLM 调用密钥（二选一必填）
+- （可选）`ONLYOFFICE_AI_API_KEY`、`ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`、`TAVILY_API_KEY`
+
+说明：
+- 其他非敏感配置（如 `DEFAULT_LLM_PROVIDER`、`KNOWLEDGE_*`、`RERANK_*`、`FILES_OCR_*` 等）可通过 Repo Variables 设置；
+- Deploy 会把这些键值写入 `lawseekdog-secrets` 并通过 `envFrom` 注入到各服务；
+- 变量命名与根目录 `env.txt` 保持一致（生产模板参考）。
