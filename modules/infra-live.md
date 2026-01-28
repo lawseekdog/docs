@@ -34,6 +34,7 @@ nav_order: 99
   - 可选 `addons`：统一安装基础设施组件（Postgres/MinIO/Qdrant/Elasticsearch/api-gateway/OnlyOffice Document Server）
   - 通过 `CI_REGISTRY_PROVIDER` 选择镜像仓库（`ghcr` 或 `aliyun-acr`）
   - 部署阶段会创建/刷新 `imagePullSecret`，并在最后执行 `kubectl rollout status` 校验发布健康
+  - 若仅变更配置，可用 `deploy_mode=config-only` 快速刷新 `lawseekdog-secrets`（可选 `rollout restart`），无需完整发布
 
 - `infra-live/.github/workflows/publish-base-images.yml`
   - 发布基础设施镜像到 GHCR（用于国内网络下避免拉取 docker.io 不稳定）
@@ -118,11 +119,12 @@ Secrets：
   - 若你的 `GH_ORG_TOKEN` 同时具备 `read:packages`，也可复用它来拉取 GHCR
 - `INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（让 `/internal/**` 互调一致，必填）
 - `AI_BOOT_SECURITY_JWT_HMAC_SECRET`：Auth JWT HMAC secret（>=32 bytes，必填）
+- `SECRET_KEY`：shared-libs 兜底密钥（>=16 bytes，建议必填）
 - `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`：MinIO 根账号（必填）
 - `OPENROUTER_API_KEY` 或 `DEEPSEEK_API_KEY`：LLM 调用密钥（二选一必填）
-- （可选）`ONLYOFFICE_AI_API_KEY`、`ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`、`TAVILY_API_KEY`
+- （可选）`ONLYOFFICE_AI_API_KEY`、`ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`、`TAVILY_API_KEY`、`NEO4J_URL` / `NEO4J_USER` / `NEO4J_PASSWORD`
 
 说明：
-- 其他非敏感配置（如 `DEFAULT_LLM_PROVIDER`、`KNOWLEDGE_*`、`RERANK_*`、`FILES_OCR_*` 等）可通过 Repo Variables 设置；
+- 其他非敏感配置（如 `DEFAULT_LLM_PROVIDER`、`DEFAULT_EMBEDDING_MODEL`、`ELEMENT_EXTRACT_*`、`PII_REDACTION_ENABLED`、`KNOWLEDGE_*`、`RERANK_*`、`FILES_OCR_*` 等）可通过 Repo Variables 设置；
 - Deploy 会把这些键值写入 `lawseekdog-secrets` 并通过 `envFrom` 注入到各服务；
 - 变量命名与根目录 `env.txt` 保持一致（生产模板参考）。
