@@ -54,7 +54,7 @@ kubectl -n lawseekdog port-forward svc/onlyoffice-documentserver 18010:80
 
 ## MinIO（重要）
 
-前端下载附件使用的是 `GET /api/v1/files/{fileId}/download-url` 返回的 MinIO **预签名 URL**。因此：
+前端下载附件通常通过 `api-gateway` 调用 `GET /files-service/api/v1/files/{fileId}/download-url` 获取 MinIO **预签名 URL**。因此：
 
 - MinIO 必须有一个浏览器可访问的公网 endpoint
 - `files-service` 需要配置 `MINIO_PUBLIC_ENDPOINT`（用于生成预签名 URL 的 host）
