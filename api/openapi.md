@@ -13,6 +13,11 @@ nav_order: 3
 - OpenAPI JSON：`GET /api/v1/v3/api-docs`
 - Swagger UI（若依赖启用）：`GET /api/v1/swagger-ui/index.html`
 
+经 `api-gateway` 访问时需要加服务前缀：
+
+- OpenAPI JSON：`GET /{service-name}/api/v1/v3/api-docs`
+- Swagger UI：`GET /{service-name}/api/v1/swagger-ui/index.html`
+
 框架侧默认会过滤路径：
 
 - 只保留对外路径：`/api/**`
@@ -34,6 +39,8 @@ nav_order: 3
   - `/api/v1/internal/actuator/health/liveness`
   - `/api/v1/internal/actuator/health/readiness`
   - `/api/v1/internal/actuator/prometheus`
+
+经 `api-gateway` 访问时需要加服务前缀：`/{service-name}/api/v1/internal/actuator/**`。
 
 说明：
 

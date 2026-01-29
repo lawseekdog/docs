@@ -10,9 +10,15 @@ nav_order: 1
 
 ## 1) API 边界（强制）
 
-- 对外：`/api/v1/**`（面向前端/第三方/业务调用）
-- 对内：`/api/v1/internal/**`（Service-to-Service 调用）
+- 服务内（各微服务自身的 context-path）：
+  - 对外：`/api/v1/**`（面向前端/第三方/业务调用）
+  - 对内：`/api/v1/internal/**`（Service-to-Service 调用）
+- 经 `api-gateway` 统一对外暴露（推荐客户端只访问网关）：
+  - 对外：`/{service-name}/api/v1/**`
+  - 对内：`/{service-name}/api/v1/internal/**`
 - **禁止**对外暴露 `/api/v1/internal/**`（生产应由网络策略 + 内部鉴权双保险）
+
+> 本文后续示例默认按“服务内路径”书写；走网关时统一在最前面加 `/{service-name}`。
 
 ## 2) 资源导向（Google REST/AIP 风格）
 
