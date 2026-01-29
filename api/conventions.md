@@ -52,10 +52,11 @@ nav_order: 1
 
 - 列表：`GET /resources`
 - 过滤：query string（不要用请求体）
-- 分页：项目内统一一种风格（`page/size` 或 `page_size/page_token`）
-- 排序：`order_by=created_at desc,updated_at asc`
+- 分页：统一使用 `page/size`（`page` 从 1 开始；`size` 默认 20，建议最大 100）
+- 排序：统一使用 `order_by`（逗号分隔），如 `order_by=created_at desc,updated_at asc`
+- 复杂过滤：统一用 `filters`（JSON 字符串），避免散落多种 query 参数风格
 
-> 当前模板工程更偏“易用优先”，但正式阶段建议逐步收敛到 token 分页，避免深翻页性能与一致性问题。
+> 未来如需 token 分页，可在不破坏 `page/size` 兼容的前提下追加 `page_token`（并在响应 meta 中返回 next_token）。
 
 ## 6) 错误与状态码（强制）
 

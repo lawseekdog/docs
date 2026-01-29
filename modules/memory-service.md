@@ -21,6 +21,15 @@ memory-service 提供“事实（Fact）”的结构化存储与召回能力：
 
 ## 内部 API（/internal，摘录，当前实现）
 
+内部接口统一：
+
+- 路径前缀：`/api/v1/internal/**`
+- 鉴权：`X-Internal-Api-Key`
+- 多租户隔离：`X-Organization-Id`（写入/召回均要求）
+- 返回体：`ApiResponse(code/message/data)`（分页为 `ApiResponse<PageResponse<T>>`）
+
+核心事实接口（摘录）：
+
 - `POST /api/v1/internal/memory/facts`
 - `GET  /api/v1/internal/memory/facts/{factId}`
 - `PUT  /api/v1/internal/memory/facts/{factId}`
@@ -29,7 +38,8 @@ memory-service 提供“事实（Fact）”的结构化存储与召回能力：
 ## 其他内部 API（/internal，摘录）
 
 - `POST /api/v1/internal/memory/recall`
-- `GET  /api/v1/internal/memory/users/{userId}/facts`
+- `GET  /api/v1/internal/memory/users/{userId}/facts`（支持 `page/size`；兼容 `limit`）
+- `GET  /api/v1/internal/memory/users/{userId}/conflicts`（支持 `page/size`；兼容 `limit`）
 - `GET  /api/v1/internal/memory/users/{userId}/context`
 - `POST /api/v1/internal/memory/extract`
 - `POST /api/v1/internal/memory/refine`
