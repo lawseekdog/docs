@@ -38,21 +38,21 @@ nav_order: 1
 
 ## 关键 API（internal）
 
-以下路径在运行时前缀为 `/internal/ai/...`（因为 FastAPI router prefix=`/ai` 且 include_router prefix=`/internal`）。
+以下路径在运行时前缀为 `/api/v1/internal/ai/...`（因为 FastAPI router prefix=`/ai` 且 include_router prefix=`/internal`）。
 
 ### 1) Skill API
 
-- `GET  /internal/ai/skills`：列出可用 skills（过滤 internal/api_call_only）
-- `GET  /internal/ai/skills/{skill_name}`：查询 skill 详情
-- `POST /internal/ai/skills/{skill_name}/execute`：技能直跑（`skill_only=true`，强制执行指定 skill）
+- `GET  /api/v1/internal/ai/skills`：列出可用 skills（过滤 internal/api_call_only）
+- `GET  /api/v1/internal/ai/skills/{skill_name}`：查询 skill 详情
+- `POST /api/v1/internal/ai/skills/{skill_name}/execute`：技能直跑（`skill_only=true`，强制执行指定 skill）
 
 ### 2) Agent 执行 API
 
-- `GET  /internal/ai/agent/pending_card?thread_id=...`
-- `POST /internal/ai/agent/execute`：非流式执行（供服务间调用）
-- `POST /internal/ai/agent/resume`：非流式恢复
-- `POST /internal/ai/agent/execute/stream`：流式执行（NDJSON）
-- `POST /internal/ai/agent/resume/stream`：流式恢复（NDJSON）
+- `GET  /api/v1/internal/ai/agent/pending_card?thread_id=...`
+- `POST /api/v1/internal/ai/agent/execute`：非流式执行（供服务间调用）
+- `POST /api/v1/internal/ai/agent/resume`：非流式恢复
+- `POST /api/v1/internal/ai/agent/execute/stream`：流式执行（NDJSON）
+- `POST /api/v1/internal/ai/agent/resume/stream`：流式恢复（NDJSON）
 
 NDJSON 单行格式：
 
@@ -62,9 +62,9 @@ NDJSON 单行格式：
 
 ### 3) Trace/Timeline（可观测）
 
-- `GET /internal/ai/timeline?...`：按 session/matter/thread 查询轮次摘要
-- `GET /internal/ai/traces?...`：执行 trace 列表
-- `GET /internal/ai/traces/{trace_id}`：trace 详情
+- `GET /api/v1/internal/ai/timeline?...`：按 session/matter/thread 查询轮次摘要
+- `GET /api/v1/internal/ai/traces?...`：执行 trace 列表
+- `GET /api/v1/internal/ai/traces/{trace_id}`：trace 详情
 
 > 具体字段以实现为准；consultations-service 会把部分事件透传到前端（progress/task_start/task_end 等）。
 

@@ -32,11 +32,11 @@ collector-service 同时挂载到：
 
 ### 1) Seed Packages（核心）
 
-- `GET  /internal/seed-packages`（internal key）
-- `GET  /internal/seed-packages/{package_id}/manifest`（internal key）
-- `GET  /internal/seed-packages/{package_id}/download`（internal key）
+- `GET  /api/v1/internal/seed-packages`（internal key）
+- `GET  /api/v1/internal/seed-packages/{package_id}/manifest`（internal key）
+- `GET  /api/v1/internal/seed-packages/{package_id}/download`（internal key）
 - `POST /api/v1/seed-packages/{package_id}/apply`（需要登录权限）
-- `POST /internal/seed-packages/apply-internal`（internal key）
+- `POST /api/v1/internal/seed-packages/apply-internal`（internal key）
 
 ### 2) Collector（sources/runs/documents）
 

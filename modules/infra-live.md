@@ -117,7 +117,7 @@ Secrets：
 - （推荐）`GH_PACKAGES_TOKEN`：私有 GHCR 拉取镜像（需要 `read:packages`；私有仓库通常还要 `repo`）
   - `GH_PACKAGES_USERNAME` 可选（未配置时 deploy 默认用触发人 `github.actor`）
   - 若你的 `GH_ORG_TOKEN` 同时具备 `read:packages`，也可复用它来拉取 GHCR
-- `INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（让 `/internal/**` 互调一致，必填）
+- `INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（让 `/api/v1/internal/**` 互调一致，必填）
 - `AI_BOOT_SECURITY_JWT_HMAC_SECRET`：Auth JWT HMAC secret（>=32 bytes，必填）
 - `SECRET_KEY`：shared-libs 兜底密钥（>=16 bytes，建议必填）
 - `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`：MinIO 根账号（必填）

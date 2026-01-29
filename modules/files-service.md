@@ -41,14 +41,14 @@ files-service 负责文件相关能力：
 
 供 ai-engine/服务间调用：
 
-- `POST /internal/files/upload`（internal 上传）
-- `POST /internal/files/presigned-url`
-- `GET  /internal/files/{fileId}`（内部元信息）
-- `GET  /internal/files/{fileId}/content`（内部内容）
-- `POST /internal/files/{fileId}/parse`（解析）
-- `PUT  /internal/files/{fileId}/parse-status`
-- `GET  /internal/files/{fileId}/exists`
-- `DELETE /internal/files/{fileId}`
+- `POST /api/v1/internal/files/upload`（internal 上传）
+- `POST /api/v1/internal/files/presigned-url`
+- `GET  /api/v1/internal/files/{fileId}`（内部元信息）
+- `GET  /api/v1/internal/files/{fileId}/content`（内部内容）
+- `POST /api/v1/internal/files/{fileId}/parse`（解析）
+- `PUT  /api/v1/internal/files/{fileId}/parse-status`
+- `GET  /api/v1/internal/files/{fileId}/exists`
+- `DELETE /api/v1/internal/files/{fileId}`
 
 ## 与其它服务的关系
 

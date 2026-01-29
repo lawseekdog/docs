@@ -57,12 +57,12 @@ consultations-service 负责：
 
 主要用于服务间调用与运维/脚本：
 
-- `GET  /internal/sessions/{sessionId}`
-- `GET  /internal/sessions/{sessionId}/messages/recent`
-- `POST /internal/sessions/{sessionId}/messages/assistant`
-- `POST /internal/sessions/{sessionId}/messages/user-and-chat`（非流式 chat）
-- `POST /internal/sessions/{sessionId}/resume`（非流式 resume）
-- `GET  /internal/sessions/{sessionId}/intake-context`
+- `GET  /api/v1/internal/sessions/{sessionId}`
+- `GET  /api/v1/internal/sessions/{sessionId}/messages/recent`
+- `POST /api/v1/internal/sessions/{sessionId}/messages/assistant`
+- `POST /api/v1/internal/sessions/{sessionId}/messages/user-and-chat`（非流式 chat）
+- `POST /api/v1/internal/sessions/{sessionId}/resume`（非流式 resume）
+- `GET  /api/v1/internal/sessions/{sessionId}/intake-context`
 
 ## 与其它服务的交互（关键）
 
@@ -70,7 +70,7 @@ consultations-service 负责：
 
 当 session 尚未绑定 `matter_id` 时，chat/resume 会触发：
 
-- 调用 matter-service：`POST /internal/matters/from-consultation`
+- 调用 matter-service：`POST /api/v1/internal/matters/from-consultation`
 - 写回 session.matter_id 与 playbook_id
 
 这使得咨询对话天然拥有“事项工作流”的承载体（Matter）。
@@ -79,8 +79,8 @@ consultations-service 负责：
 
 consultations-service 调用 ai-engine：
 
-- `POST /internal/ai/agent/execute/stream`
-- `POST /internal/ai/agent/resume/stream`
+- `POST /api/v1/internal/ai/agent/execute/stream`
+- `POST /api/v1/internal/ai/agent/resume/stream`
 
 并将 NDJSON events 映射为前端 SSE events：
 

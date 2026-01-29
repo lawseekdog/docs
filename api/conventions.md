@@ -11,8 +11,8 @@ nav_order: 1
 ## 1) API 边界（强制）
 
 - 对外：`/api/v1/**`（面向前端/第三方/业务调用）
-- 对内：`/internal/**`（Service-to-Service 调用）
-- **禁止**对外暴露 `/internal/**`（生产应由网络策略 + 内部鉴权双保险）
+- 对内：`/api/v1/internal/**`（Service-to-Service 调用）
+- **禁止**对外暴露 `/api/v1/internal/**`（生产应由网络策略 + 内部鉴权双保险）
 
 ## 2) 资源导向（Google REST/AIP 风格）
 
@@ -46,7 +46,7 @@ nav_order: 1
 - `X-Request-Id`：链路追踪 ID（服务端可生成并回写；日志 MDC 必须透传）
 - `X-Organization-Id`：组织/律所上下文（是否强制由配置决定；JPA 审计会使用）
 - `Idempotency-Key`：幂等键（涉及扣费/任务/写外部系统等写操作必须支持）
-- `X-Internal-Api-Key`：内部接口鉴权（仅允许 `/internal/**` 使用）
+- `X-Internal-Api-Key`：内部接口鉴权（仅允许 `/api/v1/internal/**` 使用）
 
 ## 5) 列表/过滤/分页/排序（建议统一）
 

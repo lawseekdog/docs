@@ -114,7 +114,7 @@ AI Engine 技能执行完成
 │ - card          │ ─── 待办卡片
 └────────┬────────┘
          │
-         ▼ HTTP POST /internal/matters/{id}/sync
+         ▼ HTTP POST /api/v1/internal/matters/{id}/sync
 ┌─────────────────┐
 │ Matter Service  │
 │                 │

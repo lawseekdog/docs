@@ -109,7 +109,7 @@ Infrastructure Layer (JPA, External Client)
 ### 2. 统一接口规范
 
 - 对外接口：`/api/v1/**`
-- 内部接口：`/internal/**`
+- 内部接口：`/api/v1/internal/**`
 - 统一返回体：`ApiResponse<T>` / `PageResponse<T>`
 
 ```json
@@ -123,7 +123,7 @@ Infrastructure Layer (JPA, External Client)
 ### 3. 可观测性
 
 - 日志：Log4j2，包含 `request_id`, `user_id`, `organization_id`
-- 指标：Prometheus + Actuator (`/internal/actuator`)
+- 指标：Prometheus + Actuator (`/api/v1/internal/actuator`)
 - 链路：OpenTelemetry (规划中)
 
 ### 4. 幂等性

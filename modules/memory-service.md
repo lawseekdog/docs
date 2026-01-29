@@ -21,18 +21,18 @@ memory-service 提供“事实（Fact）”的结构化存储与召回能力：
 
 ## 内部 API（/internal，摘录，当前实现）
 
-- `POST /internal/memory/facts`
-- `GET  /internal/memory/facts/{factId}`
-- `PUT  /internal/memory/facts/{factId}`
-- `DELETE /internal/memory/facts/{factId}`
+- `POST /api/v1/internal/memory/facts`
+- `GET  /api/v1/internal/memory/facts/{factId}`
+- `PUT  /api/v1/internal/memory/facts/{factId}`
+- `DELETE /api/v1/internal/memory/facts/{factId}`
 
 ## 其他内部 API（/internal，摘录）
 
-- `POST /internal/memory/recall`
-- `GET  /internal/memory/users/{userId}/facts`
-- `GET  /internal/memory/users/{userId}/context`
-- `POST /internal/memory/extract`
-- `POST /internal/memory/refine`
+- `POST /api/v1/internal/memory/recall`
+- `GET  /api/v1/internal/memory/users/{userId}/facts`
+- `GET  /api/v1/internal/memory/users/{userId}/context`
+- `POST /api/v1/internal/memory/extract`
+- `POST /api/v1/internal/memory/refine`
 
 ## 现状与边界
 

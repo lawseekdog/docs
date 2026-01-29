@@ -42,7 +42,7 @@ templates-service 提供模板与文书相关能力：
 
 seed 导入：
 
-- `POST /internal/seed/curated-templates/import`
+- `POST /api/v1/internal/seed/curated-templates/import`
 
 由 collector-service 的 seed 包触发。
 

@@ -7,7 +7,7 @@ nav_order: 1
 
 LawSeekDog 是一套「AI Agent 驱动的法律业务平台」的多仓库工程组。
 
-- 业务微服务：Java 21 + Spring Boot（DDD 分层、Google REST、统一 `/api/**` 与 `/internal/**` 边界）
+- 业务微服务：Java 21 + Spring Boot（DDD 分层、Google REST、统一 `/api/**` 与 `/api/v1/internal/**` 边界）
 - AI 引擎：Python + FastAPI + LangGraph（技能/Playbook 驱动、可中断的人机协同）
 - 工程化：`ai-boot-framework`（脚手架/BOM/Starter/Archetype）+ `infra-templates`（统一 CI/CD）+ K8s/Helm
 

@@ -10,13 +10,13 @@ nav_order: 3
 
 各 Java 微服务基于 SpringDoc 输出 OpenAPI：
 
-- OpenAPI JSON：`GET /v3/api-docs`
-- Swagger UI（若依赖启用）：`GET /swagger-ui/index.html`
+- OpenAPI JSON：`GET /api/v1/v3/api-docs`
+- Swagger UI（若依赖启用）：`GET /api/v1/swagger-ui/index.html`
 
 框架侧默认会过滤路径：
 
 - 只保留对外路径：`/api/**`
-- 默认隐藏内部路径：`/internal/**`
+- 默认隐藏内部路径：`/api/v1/internal/**`（即对外表现为 `/api/v1/internal/**`）
 
 对应配置（可覆盖）：
 
@@ -28,12 +28,12 @@ nav_order: 3
 
 框架默认把 Actuator 放到内部路径，便于统一保护：
 
-- 基础路径：`/internal/actuator`
+- 基础路径：`/api/v1/internal/actuator`
 - 常用端点：
-  - `/internal/actuator/health`
-  - `/internal/actuator/health/liveness`
-  - `/internal/actuator/health/readiness`
-  - `/internal/actuator/prometheus`
+  - `/api/v1/internal/actuator/health`
+  - `/api/v1/internal/actuator/health/liveness`
+  - `/api/v1/internal/actuator/health/readiness`
+  - `/api/v1/internal/actuator/prometheus`
 
 说明：
 

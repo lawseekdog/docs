@@ -41,9 +41,9 @@ platform-service 承载“平台级配置/字典/审计/标签”等控制面能
 
 seed/批量导入与内部查询：
 
-- `GET  /internal/platform/playbook-configs`
-- `GET  /internal/platform/playbook-configs/{code}`
-- `POST /internal/platform/playbook-configs/batch`
+- `GET  /api/v1/internal/platform/playbook-configs`
+- `GET  /api/v1/internal/platform/playbook-configs/{code}`
+- `POST /api/v1/internal/platform/playbook-configs/batch`
 
 （其它 internal 控制器以 OpenAPI 为准）
 

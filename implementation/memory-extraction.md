@@ -21,15 +21,15 @@ memory-service 以“结构化 Facts”为主：
 
 内部接口（给 ai-engine / 服务间调用）：
 
-- `POST /internal/memory/facts`（create fact）
-- `GET  /internal/memory/facts/{factId}`
-- `PUT  /internal/memory/facts/{factId}`
-- `DELETE /internal/memory/facts/{factId}`
-- `POST /internal/memory/recall`
-- `POST /internal/memory/extract`
-- `POST /internal/memory/reconcile`（route2：matter -> memory 可重建索引写入）
-- `GET  /internal/memory/users/{userId}/context`
-- `GET  /internal/memory/users/{userId}/facts`
+- `POST /api/v1/internal/memory/facts`（create fact）
+- `GET  /api/v1/internal/memory/facts/{factId}`
+- `PUT  /api/v1/internal/memory/facts/{factId}`
+- `DELETE /api/v1/internal/memory/facts/{factId}`
+- `POST /api/v1/internal/memory/recall`
+- `POST /api/v1/internal/memory/extract`
+- `POST /api/v1/internal/memory/reconcile`（route2：matter -> memory 可重建索引写入）
+- `GET  /api/v1/internal/memory/users/{userId}/context`
+- `GET  /api/v1/internal/memory/users/{userId}/facts`
 
 > 具体入参/返回以 OpenAPI 为准（见 `api/openapi.md`）。
 
@@ -45,7 +45,7 @@ memory-service 以“结构化 Facts”为主：
 
 memory-service 暴露了抽取入口：
 
-- `POST /internal/memory/extract`
+- `POST /api/v1/internal/memory/extract`
 
 但当前实现返回空结果（占位），尚未集成 LLM/ai-engine 做真正的事实抽取：
 

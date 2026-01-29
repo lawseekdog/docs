@@ -34,7 +34,7 @@ nav_order: 1
 
 当 session 尚未绑定 matter 时，consultations-service 会调用 matter-service 的 internal 接口创建事项：
 
-- `POST /internal/matters/from-consultation`
+- `POST /api/v1/internal/matters/from-consultation`
 - 关键字段：`session_id`、`user_id`、`organization_id`、`title`、`service_type_id`、`file_ids`
 - 默认 `service_type_id`：`legal_consultation`（若 session 未指定）
 
@@ -63,7 +63,7 @@ sequenceDiagram
   FE->>CONS: POST /chat (SSE)
   CONS->>CONS: 落库用户消息
   alt session 未绑定 matter
-    CONS->>MAT: POST /internal/matters/from-consultation
+    CONS->>MAT: POST /api/v1/internal/matters/from-consultation
     MAT-->>CONS: matter_id + playbook_id
   end
   CONS->>PLAT: 获取 playbook_config（internal）

@@ -51,7 +51,7 @@ matter-service 是“事项（Matter）”的真源服务，负责法律服务�
 
 ### 1) 从咨询创建事项
 
-- `POST /internal/matters/from-consultation`
+- `POST /api/v1/internal/matters/from-consultation`
 
 该接口用于 consultations-service 在对话中确保绑定 matter：
 
@@ -60,23 +60,23 @@ matter-service 是“事项（Matter）”的真源服务，负责法律服务�
 
 ### 2) 工作流状态与同步
 
-- `GET  /internal/matters/{matterId}`（内部读取）
-- `GET  /internal/matters/{matterId}/workflow/profile`（给 ai-engine/consultations 用的工作流 profile）
-- `POST /internal/matters/{matterId}/sync/all`（内部同步入口，供 ai-engine 写入状态/产物）
+- `GET  /api/v1/internal/matters/{matterId}`（内部读取）
+- `GET  /api/v1/internal/matters/{matterId}/workflow/profile`（给 ai-engine/consultations 用的工作流 profile）
+- `POST /api/v1/internal/matters/{matterId}/sync/all`（内部同步入口，供 ai-engine 写入状态/产物）
 
 ### 3) 结构化分析结果提交（internal）
 
 该组接口用于提交证据/争点/策略等产物（由 ai-engine skill/tool 调用）：
 
-- `POST /internal/matters/{matterId}/analysis/versions/allocate`
-- `GET  /internal/matters/{matterId}/analysis/versions/latest`
-- `POST /internal/matters/{matterId}/evidences/submit-analysis`
-- `POST /internal/matters/{matterId}/sufficiency/submit`
-- `POST /internal/matters/{matterId}/issues/submit`
-- `POST /internal/matters/{matterId}/strategies/submit`
-- `POST /internal/matters/{matterId}/risk-assessment/submit`
-- `POST /internal/matters/{matterId}/defense-strategy/submit`
-- `POST /internal/matters/{matterId}/appeal-strategy/submit`
+- `POST /api/v1/internal/matters/{matterId}/analysis/versions/allocate`
+- `GET  /api/v1/internal/matters/{matterId}/analysis/versions/latest`
+- `POST /api/v1/internal/matters/{matterId}/evidences/submit-analysis`
+- `POST /api/v1/internal/matters/{matterId}/sufficiency/submit`
+- `POST /api/v1/internal/matters/{matterId}/issues/submit`
+- `POST /api/v1/internal/matters/{matterId}/strategies/submit`
+- `POST /api/v1/internal/matters/{matterId}/risk-assessment/submit`
+- `POST /api/v1/internal/matters/{matterId}/defense-strategy/submit`
+- `POST /api/v1/internal/matters/{matterId}/appeal-strategy/submit`
 
 ## 与 platform-service 的关系（配置/Playbook）
 

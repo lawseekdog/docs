@@ -21,7 +21,7 @@ nav_order: 5
 | 仓库 | 语言/形态 | 角色 | 备注 |
 |------|----------|------|------|
 | `frontend` | Node/Vue3 | 运行时 | 多端前端（admin/lawyer/firm） |
-| `auth-service` | Java/Spring Boot | 运行时 | 登录/鉴权/RBAC（对外 `/api/**`；内部 `/internal/**`） |
+| `auth-service` | Java/Spring Boot | 运行时 | 登录/鉴权/RBAC（对外 `/api/**`；内部 `/api/v1/internal/**`） |
 | `user-service` | Java/Spring Boot | 运行时 | 用户/画像（业务域用户） |
 | `organization-service` | Java/Spring Boot | 运行时 | 组织/律所/成员 |
 | `billing-service` | Java/Spring Boot | 运行时 | 订阅/用量/额度（MVP 形态） |

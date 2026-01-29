@@ -42,27 +42,27 @@ knowledge-service 提供“知识的存储、索引与检索”能力：
 
 ### 1) Atomic Search（检索原语）
 
-- `POST /internal/atomic/keyword-search`
-- `POST /internal/atomic/vector-search`
-- `POST /internal/atomic/hybrid-search`
-- `POST /internal/atomic/document`
-- `POST /internal/atomic/section`
+- `POST /api/v1/internal/atomic/keyword-search`
+- `POST /api/v1/internal/atomic/vector-search`
+- `POST /api/v1/internal/atomic/hybrid-search`
+- `POST /api/v1/internal/atomic/document`
+- `POST /api/v1/internal/atomic/section`
 
 ### 2) GraphRAG
 
-- `POST /internal/atomic/graph-query`
-- `POST /internal/atomic/graph-rag-search`
+- `POST /api/v1/internal/atomic/graph-query`
+- `POST /api/v1/internal/atomic/graph-rag-search`
 
 ### 3) Seed 导入
 
-- `POST /internal/seed/structured/import`
-- `POST /internal/seed/system-kb-documents/import`
-- `POST /internal/seed/cause-of-action-profiles/import`
+- `POST /api/v1/internal/seed/structured/import`
+- `POST /api/v1/internal/seed/system-kb-documents/import`
+- `POST /api/v1/internal/seed/cause-of-action-profiles/import`
 
 ### 4) 索引运维
 
-- `POST /internal/search/reindex-by-file`
-- `POST /internal/search/reindex-batch`
+- `POST /api/v1/internal/search/reindex-by-file`
+- `POST /api/v1/internal/search/reindex-batch`
 
 ## 搜索与降级策略（重要）
 

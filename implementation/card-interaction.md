@@ -49,9 +49,9 @@ nav_order: 3
 
 ai-engine internal API（以当前实现为准）：
 
-- `GET  /internal/ai/agent/pending_card?thread_id=...`
-- `POST /internal/ai/agent/execute/stream`（NDJSON）
-- `POST /internal/ai/agent/resume/stream`（NDJSON）
+- `GET  /api/v1/internal/ai/agent/pending_card?thread_id=...`
+- `POST /api/v1/internal/ai/agent/execute/stream`（NDJSON）
+- `POST /api/v1/internal/ai/agent/resume/stream`（NDJSON）
 
 流式输出为逐行 JSON：
 
@@ -82,7 +82,7 @@ SSE 链路常见问题是前端刷新/断线重连。为避免“卡片已经触
 
 其内部通常会根据 thread_id 去 ai-engine 查询：
 
-- `GET /internal/ai/agent/pending_card?thread_id=...`
+- `GET /api/v1/internal/ai/agent/pending_card?thread_id=...`
 
 返回格式（概念）：
 

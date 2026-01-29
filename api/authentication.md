@@ -29,7 +29,7 @@ nav_order: 2
 
 ## 2) 对内：`X-Internal-Api-Key`（强制）
 
-所有 Java 服务的 `/internal/**` 必须校验内部密钥：
+所有 Java 服务的 `/api/v1/internal/**` 必须校验内部密钥：
 
 - Header：`X-Internal-Api-Key: <shared-secret>`
 - 失败：返回 `401 Unauthorized`（统一返回体）
@@ -46,7 +46,7 @@ nav_order: 2
 Python 服务属于 internal-only 服务形态：
 
 - 入口一般不直接暴露给公网
-- 上游（Java 服务）通过 internal 网络访问其 `/internal/**` 接口
+- 上游（Java 服务）通过 internal 网络访问其 `/api/v1/internal/**` 接口
 - internal key 建议同样通过 header 透传（与 Java 侧一致），避免“跨语言两套鉴权”
 
 > 具体 header 校验以 Python 侧实现为准；当前以“网络隔离 + 上游校验”为主。

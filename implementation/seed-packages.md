@@ -13,7 +13,7 @@ Seed Packages 是 LawSeekDog 的“系统资源分发机制”，用于把：
 - 知识结构化 seeds（要素/清单/系统 KB 文档）
 - 模板系统资源
 
-以可审计、可回放的方式推送到各微服务的 `/internal/**` 接口。
+以可审计、可回放的方式推送到各微服务的 `/api/v1/internal/**` 接口。
 
 ## 1) 资源位置与目录结构
 
@@ -73,13 +73,13 @@ collector-service 的执行器会把 `kind` 映射为对目标服务的 internal
 常见映射（示例）：
 
 - `platform.seed.playbook_configs.import`
-  - 调用 platform-service：`POST /internal/platform/playbook-configs/batch`
+  - 调用 platform-service：`POST /api/v1/internal/platform/playbook-configs/batch`
 - `platform.seed.system_configs.upsert`
   - 调用 platform-service：写入 config key/value（用于 matters.service_types 等）
 - `knowledge.seed.structured.import`
-  - 调用 knowledge-service：`POST /internal/seed/structured/import`
+  - 调用 knowledge-service：`POST /api/v1/internal/seed/structured/import`
 - `knowledge.seed.system_kb_documents.import`
-  - 调用 knowledge-service：`POST /internal/seed/system-kb-documents/import`
+  - 调用 knowledge-service：`POST /api/v1/internal/seed/system-kb-documents/import`
 
 说明：
 
@@ -91,9 +91,9 @@ collector-service 同时挂载在 `/api/v1` 与 `/internal`（方便对齐 Java 
 
 ### 4.1 列出与查看 seed packages（internal api key）
 
-- `GET /internal/seed-packages`
-- `GET /internal/seed-packages/{package_id}/manifest`
-- `GET /internal/seed-packages/{package_id}/download`（下载 zip）
+- `GET /api/v1/internal/seed-packages`
+- `GET /api/v1/internal/seed-packages/{package_id}/manifest`
+- `GET /api/v1/internal/seed-packages/{package_id}/download`（下载 zip）
 
 以上接口使用 `X-Internal-Api-Key` 鉴权。
 
@@ -105,7 +105,7 @@ collector-service 同时挂载在 `/api/v1` 与 `/internal`（方便对齐 Java 
    - `POST /api/v1/seed-packages/{package_id}/apply`
 
 2) 运维/CI 用（仅 internal api key）：
-   - `POST /internal/seed-packages/apply-internal`
+   - `POST /api/v1/internal/seed-packages/apply-internal`
 
 请求体（示例）：
 

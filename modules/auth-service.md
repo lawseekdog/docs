@@ -12,7 +12,7 @@ auth-service 负责系统的认证与授权：
 
 - 登录/注册/Token（以当前实现为准）
 - RBAC 权限校验（供其它服务调用）
-- internal 鉴权边界（/internal/**）
+- internal 鉴权边界（/api/v1/internal/**）
 
 ## 技术栈
 

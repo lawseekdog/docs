@@ -38,8 +38,8 @@ knowledge-service 以 Postgres 为真源，核心实体包括：
 
 典型写入入口（internal atomic）：
 
-- `POST /internal/atomic/batch-upsert`（批量写入 document + chunks）
-- `POST /internal/atomic/delete-by-file`（按 kb_id/file_id 删除）
+- `POST /api/v1/internal/atomic/batch-upsert`（批量写入 document + chunks）
+- `POST /api/v1/internal/atomic/delete-by-file`（按 kb_id/file_id 删除）
 
 （具体路由以 OpenAPI 为准）
 
@@ -67,11 +67,11 @@ Elasticsearch 被视为“可重建索引”：
 
 internal atomic API（当前实现）：
 
-- `POST /internal/atomic/keyword-search`
-- `POST /internal/atomic/vector-search`
-- `POST /internal/atomic/hybrid-search`
-- `POST /internal/atomic/document`（获取文档聚合内容）
-- `POST /internal/atomic/section`（获取某 section 聚合内容）
+- `POST /api/v1/internal/atomic/keyword-search`
+- `POST /api/v1/internal/atomic/vector-search`
+- `POST /api/v1/internal/atomic/hybrid-search`
+- `POST /api/v1/internal/atomic/document`（获取文档聚合内容）
+- `POST /api/v1/internal/atomic/section`（获取某 section 聚合内容）
 
 执行逻辑（简化）：
 
@@ -84,8 +84,8 @@ GraphRAG 的目标是把“结构化约束/图谱扩展召回”叠加到原子�
 
 internal API：
 
-- `POST /internal/atomic/graph-query`
-- `POST /internal/atomic/graph-rag-search`
+- `POST /api/v1/internal/atomic/graph-query`
+- `POST /api/v1/internal/atomic/graph-rag-search`
 
 ### 4.1 GraphStore（Neo4j，可选）
 
@@ -118,12 +118,12 @@ flowchart TB
 
 seed 数据通常由 `collector-service` 分发到 knowledge-service 的 internal seed API：
 
-- `POST /internal/seed/structured/import`
+- `POST /api/v1/internal/seed/structured/import`
   - 诉讼要素 + 非诉 checklist
   - 可选同步到 Neo4j（若启用）
-- `POST /internal/seed/system-kb-documents/import`
+- `POST /api/v1/internal/seed/system-kb-documents/import`
   - 系统 KB 文档清单（供后续采集/索引/检索使用）
-- `POST /internal/seed/cause-of-action-profiles/import`
+- `POST /api/v1/internal/seed/cause-of-action-profiles/import`
 
 seed 包来源：
 

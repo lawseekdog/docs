@@ -10,7 +10,7 @@ nav_order: 5
 
 ## 1) 必配密钥
 
-- `INTERNAL_API_KEY`：用于 `/internal/**` 调用鉴权（所有服务必须一致）
+- `INTERNAL_API_KEY`：用于 `/api/v1/internal/**` 调用鉴权（所有服务必须一致）
 - JWT（若启用）：
   - `AI_BOOT_SECURITY_JWT_ENABLED=true`
   - `AI_BOOT_SECURITY_JWT_HMAC_SECRET=<secret>`
@@ -23,12 +23,12 @@ nav_order: 5
 ## 3) 可观测性
 
 - 日志：确保输出包含 `request_id`（以及 trace/span id）
-- 指标：`/internal/actuator/prometheus`
+- 指标：`/api/v1/internal/actuator/prometheus`
 - 追踪：按需配置 OTLP exporter（对接 OpenTelemetry Collector）
 
 ## 4) 网络与安全
 
-- `/internal/**`：只允许集群内访问（NetworkPolicy/Ingress 规则）
+- `/api/v1/internal/**`：只允许集群内访问（NetworkPolicy/Ingress 规则）
 - 对外入口：建议通过 Ingress/Gateway 统一鉴权、限流与审计
 
 ## 5) 镜像与发布

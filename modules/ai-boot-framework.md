@@ -11,7 +11,7 @@ nav_order: 16
 `ai-boot-framework` 是 LawSeekDog 的 Java/Spring Boot 微服务脚手架与工程规范仓库，用于把跨服务的“硬门槛”固化为可复用组件：
 
 - 统一返回体/错误码
-- `/api/**` 与 `/internal/**` 边界
+- `/api/**` 与 `/api/v1/internal/**` 边界
 - internal api key 鉴权、JWT 资源服务器入口
 - OpenAPI 输出策略（默认只暴露对外 API）
 - JPA + Flyway 基座

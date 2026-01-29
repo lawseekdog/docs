@@ -59,7 +59,7 @@ Planner 采用“策略链”从高优先级到低优先级依次尝试，首个
 
 典型场景：
 
-- `/internal/ai/skills/{skill}/execute`（技能直跑）
+- `/api/v1/internal/ai/skills/{skill}/execute`（技能直跑）
 
 ### 3.2 priority_rules：配置优先规则（确定性）
 
