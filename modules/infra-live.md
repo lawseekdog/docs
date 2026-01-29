@@ -31,14 +31,14 @@ nav_order: 99
   - apply 后会把 `K8S_MASTER_PUBLIC_IP`/`K8S_MASTER_PRIVATE_IP` 写入 repo variables；当实例被释放/回收导致 IP 为空时，会删除这些变量以避免“陈旧 IP”
 - `infra-live/.github/workflows/deploy.yml`
   - workflow_dispatch：按指定 `image_tag` 统一部署全部服务（从各服务仓库拉 Helm chart）
-  - 可选 `addons`：统一安装基础设施组件（Postgres/MinIO/Qdrant/Elasticsearch/api-gateway/OnlyOffice Document Server）
+  - 可选 `addons`：统一安装基础设施组件（Postgres/MinIO/Elasticsearch/api-gateway/OnlyOffice Document Server）
   - 通过 `CI_REGISTRY_PROVIDER` 选择镜像仓库（`ghcr` 或 `aliyun-acr`）
   - 部署阶段会创建/刷新 `imagePullSecret`，并在最后执行 `kubectl rollout status` 校验发布健康
   - 若仅变更配置，可用 `deploy_mode=config-only` 快速刷新 `lawseekdog-secrets`（可选 `rollout restart`），无需完整发布
 
 - `infra-live/.github/workflows/publish-base-images.yml`
   - 发布基础设施镜像到 GHCR（用于国内网络下避免拉取 docker.io 不稳定）
-  - 当前覆盖：postgres、minio、qdrant、elasticsearch、nginx、onlyoffice-documentserver（通常为 amd64-only）
+  - 当前覆盖：postgres、minio、elasticsearch、nginx、onlyoffice-documentserver（通常为 amd64-only）
 
 ## OnlyOffice（可选）
 
@@ -75,7 +75,7 @@ kubectl -n lawseekdog port-forward svc/onlyoffice-documentserver 18010:80
 
 ## 资源与稳定性（MVP 单机）
 
-- `infra-live/terraform/env/mvp-k3s-spot.tfvars` 默认使用 `ecs.g7.xlarge`（4c16g），更适合“全量微服务 + ES + MinIO + Qdrant”一键起环境
+- `infra-live/terraform/env/mvp-k3s-spot.tfvars` 默认使用 `ecs.g7.xlarge`（4c16g），更适合“全量微服务 + ES + MinIO”一键起环境
 - Deploy 会在 `lawseekdog-secrets` 中写入默认 `JAVA_TOOL_OPTIONS=-Xms128m -Xmx512m`，避免多 Spring Boot 服务并发启动导致节点 OOM
 
 ## Frontend 访问（www.lawseekdog.com）

@@ -10,15 +10,12 @@ nav_order: 5
 
 ## 1) 当前已实现：结构化记忆条目（Postgres 真源）
 
-memory-service 目前以结构化存储为主：
+memory-service 以“结构化 Facts”为主：
 
-- `MemoryItem`：通用记忆条目
-  - scope：`SESSION` / `MATTER` / `USER`
-  - item_type：`FACT` 等
-  - content：文本内容
-  - source_json：来源/实体/关键词等附加信息（JSON）
-
-存储：Postgres（JPA + Flyway）。
+- 存储：Postgres（事实真源，SQLAlchemy）
+- 核心表：`memory_facts`（按 `tenant_id + user_id + scope + case_id + entity_key` 幂等）
+- scope：`case` / `global`
+- category：`user_profile` / `preference` / `case_detail` / `evidence` / `summary`
 
 ## 2) 内部 API（摘录）
 
@@ -28,11 +25,9 @@ memory-service 目前以结构化存储为主：
 - `GET  /internal/memory/facts/{factId}`
 - `PUT  /internal/memory/facts/{factId}`
 - `DELETE /internal/memory/facts/{factId}`
-- `POST /internal/memory/store`（兼容接口）
 - `POST /internal/memory/recall`
-- `GET  /internal/memory/user/{userId}`（兼容接口）
 - `POST /internal/memory/extract`
-- `POST /internal/memory/migrate`
+- `POST /internal/memory/reconcile`（route2：matter -> memory 可重建索引写入）
 - `GET  /internal/memory/users/{userId}/context`
 - `GET  /internal/memory/users/{userId}/facts`
 

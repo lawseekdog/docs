@@ -11,14 +11,13 @@ nav_order: 6
 memory-service 提供“事实（Fact）”的结构化存储与召回能力：
 
 - 支持按 scope（`case` / `global`）组织与隔离
-- 支持事实增删改查与召回（hybrid：BM25 + 向量可选）
+- 支持事实增删改查与召回（关键词/BM25 为主；可选接入 rerank-service 做重排）
 - 提供 internal recall/extract 等接口供 ai-engine 调用
 
 ## 技术栈
 
 - Python 3.11 + FastAPI
 - PostgreSQL（事实源）
-- 可选：Qdrant（向量索引，允许重建，best-effort）
 
 ## 内部 API（/internal，摘录，当前实现）
 
@@ -26,12 +25,6 @@ memory-service 提供“事实（Fact）”的结构化存储与召回能力：
 - `GET  /internal/memory/facts/{factId}`
 - `PUT  /internal/memory/facts/{factId}`
 - `DELETE /internal/memory/facts/{factId}`
-
-兼容接口（给旧调用方 / shared-libs 客户端）：
-
-- `POST /internal/memory/store`
-- `POST /internal/memory/recall`
-- `GET  /internal/memory/user/{userId}`
 
 ## 其他内部 API（/internal，摘录）
 
