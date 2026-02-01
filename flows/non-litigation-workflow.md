@@ -36,7 +36,7 @@ flowchart LR
 
 ### 2.2 各阶段（phases）
 
-| phase.id | 名称 | allowed_skills | gate（门控） |
+| phase.id | 名称 | 可用技能（由 Skill.availability 自动发现） | gate（门控） |
 |----------|------|----------------|--------------|
 | `qualify` | 需求确认 | `contract-intake` |（无显式 gate；以 checkpoints/缺口判断为主） |
 | `analyze` | 合同分析 | `contract-review` | `contract_analysis not_empty`（gate_check） |

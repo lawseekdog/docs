@@ -26,7 +26,7 @@ flowchart LR
 
 ## 2) 阶段配置要点（摘录）
 
-### 2.1 全局优先规则（priority_rules）
+### 2.1 优先规则（确定性 + 兼容提示）
 
 当有新附件且尚未完成文件分类时，优先执行 `file-classify`：
 
@@ -39,7 +39,7 @@ flowchart LR
 
 ### 2.2 各阶段（phases）
 
-| phase.id | 名称 | allowed_skills | gate（门控） |
+| phase.id | 名称 | 可用技能（由 Skill.availability 自动发现） | gate（门控） |
 |----------|------|----------------|--------------|
 | `intake` | 收案分析 | `litigation-intake` |（无显式 gate；以 checkpoints + PhaseManager 缺口判断为主） |
 | `claim_path` | 案由确认 | `cause-recommendation` | `profile.decisions.cause_confirmed == true` |

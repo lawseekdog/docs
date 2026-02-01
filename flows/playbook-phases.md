@@ -19,6 +19,8 @@ Playbook 主要来源：
 
 以 `litigation_civil_prosecution` 为例（精简字段）：
 
+> 注：下方示例中的 `allowed_skills` / `priority_rules` 属于历史字段（兼容/提示用途），不再作为候选技能过滤与确定性裁决源；以代码实现为准。
+
 ```json
 {
   "id": "litigation_civil_prosecution",
@@ -45,8 +47,8 @@ Playbook 主要来源：
 
 字段约定（核心）：
 
-- `allowed_skills`：全局可执行技能白名单（Planner 只能在其中选择，或由 phase.allowed_skills 进一步收敛）
-- `priority_rules`：全局优先规则（命中时强制选择某技能，优先级高于 LLM 兜底）
+- （已废弃/仅兼容）`allowed_skills`：历史上用于“全局技能白名单”。当前实现中，Planner 的候选技能集合由 `Skill.availability` 自动发现（见 `ai-engine/src/application/skill_executor/planner.py`），不再依赖该字段。
+- （兼容/仅作为提示）`priority_rules`：历史上用于“全局优先规则”。当前确定性优先规则来自 `Skill.priority_rule`（见 `ai-engine/src/application/agent/planner/strategies/priority_rules.py`）；但 LLM 兜底规划器仍会把 playbook/phase 的 `priority_rules` 作为软提示注入 prompt（见 `ai-engine/src/application/skill_executor/llm_planner.py`）。
 - `phases`：阶段数组（定义阶段目标、可用技能、阶段门控条件）
 
 ## 2) Phase 结构
@@ -78,8 +80,8 @@ Playbook 主要来源：
 
 字段说明：
 
-- `allowed_skills`：阶段内可用技能白名单（优先级 > playbook.allowed_skills）
-- `priority_rules`：阶段内优先规则（优先级低于 `force_skill`，高于 LLM 兜底）
+- （已废弃/仅诊断）`allowed_skills`：历史上用于“阶段内技能白名单”。当前实现不再用它过滤候选技能；它主要用于阶段推进校验/诊断：当技能属于 phase.allowed_skills 且本轮宣称 continue/finish 时，引擎会校验该技能是否填补了当前阶段缺口（见 `ai-engine/src/application/skill_executor/validators/phase_validation.py`）。
+- （兼容/仅作为提示）`priority_rules`：历史字段；确定性优先规则来自 `Skill.priority_rule`；playbook/phase.priority_rules 仅作为 LLM prompt 的软提示。
 - `checkpoints`：阶段完成校验的字段（用于“缺口检查”与提示）
 - `gate_field` + (`gate_value` 或 `gate_check`)：阶段门控条件
 
@@ -118,7 +120,7 @@ Playbook 主要来源：
 
 > 说明：当前实现允许 `gate_value` 与 `gate_check` 二选一；如果写了 `gate_field` 却两者都没有，会被校验拒绝（禁止默认兜底）。
 
-## 4) priority_rules.when（条件表达式）
+## 4) priority_rules.when（条件表达式，兼容字段）
 
 `priority_rules[*].when` 是表达式（不是点路径），必须遵循约束：
 
@@ -141,8 +143,8 @@ Playbook 主要来源：
 
 阶段推进的核心语义：
 
-1. 先根据 playbook/phase `priority_rules` 尝试选择技能（命中即执行）
-2. 若未命中，Planner 会在 `allowed_skills` 内选择下一技能（包含 LLM 兜底策略）
+1. 先根据 `Skill.priority_rule` 尝试确定性选择技能（命中即执行）
+2. 若未命中，Planner 会在“当前阶段可用技能集合”（由 `Skill.availability` 自动发现 + requires/visibility/api_call_only 过滤）内选择下一技能（包含 LLM 兜底策略）
 3. 每轮技能执行后，PhaseManager 会根据 `gate_*` 与 `checkpoints` 评估是否可推进到下一阶段
 4. 若 `control.action == ask_user`，进入中断等待用户补充（卡片），完成后 `/resume` 继续
 

@@ -4,11 +4,11 @@
 
 ## 旁路技能（Side Skills）
 
-旁路技能一般不负责推进主流程产出结论，而是作为护栏/预处理/导购在特定条件下插入执行（常见来源：`playbook.priority_rules` 或咨询态循环阶段）。
+旁路技能一般不负责推进主流程产出结论，而是作为护栏/预处理/导购在特定条件下插入执行（常见来源：`Skill.priority_rule` 的确定性命中，或咨询态循环阶段）。
 
 ### file-classify（文件分类）
 - 用途：对新附件做类型识别/归类，写入 `data.files.file_classifications`
-- 触发：`priority_rules` 命中（例如本轮有新附件且未分类）
+- 触发：`Skill.priority_rule` 命中（例如本轮有新附件且未分类）
 - 是否调用 LLM：是（preprocess 只准备输入，分类由 LLM 完成）
 - 收敛建议：保留为旁路技能；不要把分类逻辑掺进各 intake 技能，避免重复与漂移
 

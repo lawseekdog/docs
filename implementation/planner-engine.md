@@ -15,7 +15,7 @@ nav_order: 2
 Planner 的最小输入：
 
 - `state`：统一状态（thread state），包含 `profile`、data 叶子字段、附件/文件信息、当前 phase 等
-- `playbook`：流程配置（allowed_skills、priority_rules、phases、gate/checkpoints 等）
+- `playbook`：流程配置（phases、gate/checkpoints、rollback_rules 等；`allowed_skills`/`priority_rules` 属于历史字段，当前实现不再作为确定性裁决源）
 - `phase`：当前阶段配置（从 playbook.phases 中按 `current_task_id` 选取）
 
 这些数据通常由上游（consultations-service/matter-service）组装后传入 ai-engine。
@@ -24,11 +24,9 @@ Planner 的最小输入：
 
 ai-engine 在选技前会先计算“当前阶段可执行技能列表”（available_skills），过滤规则：
 
-1. 必须显式配置 `allowed_skills`
-   - phase.allowed_skills 与 playbook.allowed_skills 至少要有一个
-   - 不允许兜底为“所有技能都可用”（避免 planner 行为不可控）
-2. allowed_skills 中引用的技能必须存在于 registry
-   - 缺失技能会直接报错（禁止静默忽略）
+1. 候选技能集合由 `Skill.availability` 自动发现（global/phase_bound/phase_after）
+2. 技能必须满足 `skill.meta.requires`（all/any 条件）
+3. 排除 internal / api_call_only 技能
 3. 技能必须满足 `skill.meta.requires`（all/any 条件）
 4. 排除 internal / api_call_only 技能
 
@@ -55,24 +53,22 @@ Planner 采用“策略链”从高优先级到低优先级依次尝试，首个
 用于“外部 API 直接调用某个技能”或调试场景：
 
 - 上游在 context/state 中写入 `force_skill=<skill>`
-- Planner 直接选择该技能（仍受 allowed_skills/requires 等约束）
+- Planner 直接选择该技能（仍受可用性过滤：availability/requires/visibility/api_call_only 等约束）
 
 典型场景：
 
 - `/api/v1/internal/ai/skills/{skill}/execute`（技能直跑）
 
-### 3.2 priority_rules：配置优先规则（确定性）
+### 3.2 priority_rules：优先规则（确定性 + 兼容提示）
 
-Playbook 支持两级 priority_rules：
+新架构：确定性优先规则由 Skill 自声明（`Skill.priority_rule`），不再从 playbook/phase.priority_rules 读取。
 
-- playbook.priority_rules（全局）
-- phase.priority_rules（阶段内）
-
-命中时强制选择对应技能。
+- 确定性实现：`ai-engine/src/application/agent/planner/strategies/priority_rules.py`
+- 兼容提示：LLM 兜底规划器仍会把 playbook/phase.priority_rules 格式化为“参考建议”（不强制）注入 prompt：`ai-engine/src/application/skill_executor/llm_planner.py`
 
 重要约束：
 
-- 若规则命中但技能不可执行，会直接抛错（提示检查 allowed_skills 与 requires），避免“规则形同虚设”。
+- 若规则命中但技能不可执行，会直接抛错（提示检查 availability 与 requires），避免“规则形同虚设”。
 
 > 代码位置：`ai-engine/src/application/agent/planner/strategies/priority_rules.py`
 
@@ -80,7 +76,7 @@ Playbook 支持两级 priority_rules：
 
 当 state 处于 `_query_mode` 时：
 
-- 仅允许从 playbook.allowed_skills（全局技能白名单）中选择“检索/问答类技能”
+- 仅允许从当前可用技能集合（available_skills）中选择“检索/问答类技能”
 - 避免问答场景误触发阶段推进与门控（workflow side effects）
 
 > 代码位置：`ai-engine/src/application/agent/planner/strategies/query_mode.py`
@@ -108,7 +104,7 @@ Playbook 支持两级 priority_rules：
 
 当确定性策略都无法给出唯一答案时：
 
-- LLM 在 allowed_skills 约束内选择下一技能
+- LLM 在当前可用技能集合（available_skills）约束内选择下一技能
 - 必须返回可解释原因（reason），用于 tracing 与回放
 
 > 该策略保证“可用性”，但不应成为唯一手段；priority_rules 与 deterministic 才是主路径。
