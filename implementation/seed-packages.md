@@ -8,10 +8,9 @@ nav_order: 6
 
 Seed Packages 是 LawSeekDog 的“系统资源分发机制”，用于把：
 
-- Playbooks（流程配置）
 - 平台配置（service types、business categories、feature flags 等）
 - 知识结构化 seeds（要素/清单/系统 KB 文档）
-- 模板系统资源
+- 系统知识库资源（法条/案例/网页资料/规范等）
 
 以可审计、可回放的方式推送到各微服务的 `/api/v1/internal/**` 接口。
 
@@ -32,27 +31,27 @@ collector-service/resources/seed_packages/<package_id>/
 
 示例包：
 
-- `matters_system_resources`：业务分类、Playbook、`matters.service_types` 配置
 - `knowledge_structured_seeds`：诉讼要素/非诉清单/系统 KB 文档清单
-- `templates_system_resources`：模板系统资源（以包内容为准）
+- `knowledge_system_resources`：系统知识库基础资源（法条/案例/网页资料/规范）
 
 ## 2) manifest.json 结构（schema_version=1）
 
-以 `matters_system_resources/manifest.json` 为例（摘录）：
+以 `knowledge_structured_seeds/manifest.json` 为例（摘录）：
 
 ```json
 {
   "schema_version": 1,
-  "package_id": "matters_system_resources",
-  "name": "事项中心系统配置（分类/Playbook/服务类型）",
-  "version": "2026-01-09",
+  "package_id": "knowledge_structured_seeds",
+  "name": "知识服务结构化种子（要件/检查项/系统检索增强文档）",
+  "version": "2026-01-25",
   "items": [
     {
-      "item_id": "platform_playbook_configs_import",
-      "kind": "platform.seed.playbook_configs.import",
-      "depends_on": ["platform_business_categories_import"],
+      "item_id": "structured_seed_import",
+      "kind": "knowledge.seed.structured.import",
       "config": {
-        "playbooks_dir": "${PACKAGE_DIR}/data/playbooks"
+        "litigation_elements_json": "${PACKAGE_DIR}/data/seed_litigation_elements.json",
+        "non_litigation_checklists_json": "${PACKAGE_DIR}/data/seed_non_litigation_checklists.json",
+        "sync_to_neo4j": true
       }
     }
   ]
@@ -72,8 +71,6 @@ collector-service 的执行器会把 `kind` 映射为对目标服务的 internal
 
 常见映射（示例）：
 
-- `platform.seed.playbook_configs.import`
-  - 调用 platform-service：`POST /api/v1/internal/platform/playbook-configs/batch`
 - `platform.seed.system_configs.upsert`
   - 调用 platform-service：写入 config key/value（用于 matters.service_types 等）
 - `knowledge.seed.structured.import`
@@ -111,7 +108,7 @@ collector-service 同时挂载在 `/api/v1` 与 `/internal`（方便对齐 Java 
 
 ```json
 {
-  "package_ids": ["matters_system_resources", "knowledge_structured_seeds"],
+  "package_ids": ["knowledge_system_resources", "knowledge_structured_seeds"],
   "dry_run": false,
   "force": false
 }
