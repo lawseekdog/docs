@@ -73,8 +73,7 @@ flowchart TD
 建议把业务隔离分成三层：
 
 - `matter_category`：诉讼/仲裁/非诉…（决定大方向与 UI 入口）
-- `cause_of_action_code` 等字典码（参见根目录 `law.md`）：决定“业务口径/统计/检索维度”
+- `cause_of_action_code` 等字典码（参见 [`architecture/law.md`](../architecture/law.md)）：决定“业务口径/统计/检索维度”
 - `service_type_id`：面向产品/运营的“服务标签”（可变、可灰度、可兼容；不应渗透到底层工具契约）
 
 因此，底层实现（tools、data/profile schema、同步接口）应以 **稳定字典码与结构化字段** 为主，避免把 `service_type_id` 当“硬分片键”。
-

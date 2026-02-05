@@ -127,4 +127,4 @@ Secrets：
 说明：
 - 其他非敏感配置（如 `DEFAULT_LLM_PROVIDER`、`DEFAULT_EMBEDDING_MODEL`、`ELEMENT_EXTRACT_*`、`PII_REDACTION_ENABLED`、`KNOWLEDGE_*`、`RERANK_*`、`FILES_OCR_*` 等）可通过 Repo Variables 设置；
 - Deploy 会把这些键值写入 `lawseekdog-secrets` 并通过 `envFrom` 注入到各服务；
-- 变量命名与根目录 `env.txt` 保持一致（生产模板参考）。
+- 变量命名与 `infra-live/.local/env.txt` 保持一致（生产模板参考）。

@@ -31,7 +31,7 @@ matter-service 是“事项（Matter）”的真源服务，负责法律服务�
 - Matter
   - `status`：例如 `DRAFT` / `ACTIVE` 等
   - `matter_category`：诉讼/仲裁/非诉…（决定大方向与入口）
-  - `cause_of_action_code`：案由/争议类型字典码（建议对齐根目录 `law.md`）
+  - `cause_of_action_code`：案由/争议类型字典码（建议对齐 [`architecture/law.md`](../architecture/law.md)）
   - `service_type_id`：服务标签（产品/运营维度；用于 UI/路由提示，不应作为底层强绑定键）
   - `file_ids`：事项关联材料文件
 - MatterTodo

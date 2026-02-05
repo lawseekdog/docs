@@ -23,4 +23,4 @@ nav_order: 99
 
 - 把“阶段/门禁/优先规则”迁移到 LangGraph 子图 + conditional edges（确定性路由）。
 - 把“文书池/模板推荐”迁移到 `docgen` 子图的确定性推荐 + 用户确认（例如 `profile.decisions.selected_documents`）。
-- 把 `service_type_id` 作为产品/运营维度（标签/入口），不要作为底层强绑定流程键；底层以稳定字典码与结构化字段为主（参见根目录 `law.md`）。
+- 把 `service_type_id` 作为产品/运营维度（标签/入口），不要作为底层强绑定流程键；底层以稳定字典码与结构化字段为主（参见 [`architecture/law.md`](../architecture/law.md)）。
