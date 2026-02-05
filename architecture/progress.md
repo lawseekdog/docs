@@ -8,7 +8,7 @@ nav_order: 2
 
 本页用于回答“目前整体做到哪一步了、哪些是可用的、哪些还需要补齐”的问题（以当前代码仓库为准）。
 
-## 1) 拆分完成度（law_tools_agent → 多仓库）
+## 1) 拆分完成度（mono-repo → 多仓库）
 
 已完成：
 
@@ -22,7 +22,7 @@ nav_order: 2
 
 待补齐（重点）：
 
-- 多仓库的“本地一键起全栈”编排尚未沉淀为独立仓库/统一入口（原 `law_tools_agent` 的 compose/部署脚本已逐步废弃，需要迁移到专用的 infra/compose 仓库）。
+- 多仓库的“本地一键起全栈”编排尚未沉淀为独立仓库/统一入口（历史 mono-repo 阶段的 compose/部署脚本已逐步废弃；建议迁移到专用的 infra/compose 仓库）。
 - Python 微服务依赖 `shared-libs`（跨仓库私有依赖），CI 需要额外 checkout + Token（通常复用 `GH_PACKAGES_TOKEN`）。
 
 ## 2) 运行时链路可用性（按关键路径）

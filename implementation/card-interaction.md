@@ -11,7 +11,7 @@ nav_order: 3
 - 任何需要人工补问/选择/确认的步骤，都必须由技能输出 `control.action == "ask_user"` 触发
 - 外层不做“自动修正/兜底”，必须等待用户提交卡片后才能继续推进
 
-这一机制最初沉淀在 `law_tools_agent`，当前在多仓库形态下由：
+这一机制在当前多仓库形态下由：
 
 - `ai-engine` 负责“中断/恢复”（LangGraph interrupt）
 - `consultations-service` 负责“前端 SSE 输出与转发”
@@ -70,7 +70,7 @@ ai-engine internal API（以当前实现为准）：
 
 转发策略（关键点）：
 
-- `token` 事件只转发“用户可见节点”的 token（避免 planner/skill 等内部 JSON 推理内容污染前端）
+- `token` 事件只转发“用户可见节点”的 token（避免 router/skill 等内部 JSON 推理内容污染前端）
 - `card` 事件原样转发给前端，用于弹出悬浮卡片并锁定输入
 - `end` 结束本轮流式连接
 

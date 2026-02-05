@@ -4,12 +4,12 @@ parent: 架构
 nav_order: 5
 ---
 
-# 仓库结构与拆分映射（law_tools_agent → 多仓库）
+# 仓库结构与拆分映射
 
-本页回答两个问题：
+本页用于回答两个问题：
 
-1) 现在的 LawSeekDog “完整项目组”由哪些仓库组成？  
-2) `law_tools_agent/`（原始 mono-repo）与当前多仓库之间如何对应？
+1) 现在的 LawSeekDog “完整项目组”由哪些仓库组成？
+2) 多仓库之间有哪些关键依赖/构建约束？（尤其是 Python 的 `shared-libs`）
 
 ## 当前仓库清单（以组织 lawseekdog 为准）
 
@@ -34,7 +34,7 @@ nav_order: 5
 | `files-service` | Java/Spring Boot | 运行时 | 文件元数据 + 对象存储适配（MinIO/S3） |
 | `templates-service` | Java/Spring Boot | 运行时 | 模板/文书生成（与 `ai-engine` 交互） |
 | `gateway-service` | Java/Spring Boot | 运行时（占位） | 当前更偏“样板/占位”，不等同于集群入口网关 |
-| `ai-engine` | Python/FastAPI | 运行时 | AI 执行引擎（LangGraph、skills、NDJSON 事件流） |
+| `ai-engine` | Python/FastAPI | 运行时 | AI 执行引擎（LangGraph workbench、skills、NDJSON 事件流） |
 | `collector-service` | Python/FastAPI | 运行时 | Seed Packages（系统资源/字典/结构化种子）分发到各服务 |
 | `rerank-service` | Python/FastAPI | 运行时（可选） | 检索结果重排（CrossEncoder + BM25 fallback） |
 | `shared-libs` | Python package | 运行时依赖 | Python 侧通用库（contracts、clients、config/logging） |
@@ -44,44 +44,12 @@ nav_order: 5
 | `ai-boot-framework` | Java/Maven | 工程化 | 微服务脚手架（BOM/Starter/Archetype） |
 | `infra-templates` | GitHub Actions | 工程化 | 复用工作流（CI/CD） |
 | `infra-live` | Terraform/Helm | 工程化 | 阿里云（VPC + ECS + 自建 k3s）（Terraform）+ 整体发布（集中式 Deploy） |
-| `law_tools_agent` | mono-repo | 历史/对照 | 原始项目形态（Playbook/Skills/服务编排规范的来源） |
-
-## law_tools_agent（原始项目）与多仓库的对应关系
-
-`law_tools_agent/` 是最初的 mono-repo：包含前端、后端与一组微服务目录，并沉淀了 Skills/Playbooks/卡片中断的规范。
-
-在 `law_tools_agent/services/` 下能看到“服务目录集合”，拆分后大体对应到顶层同名仓库（部分做了命名调整/域合并）。
-
-### 1) 直接一一对应（或仅改名）
-
-| mono-repo 路径 | 现在的仓库 |
-|---------------|-----------|
-| `law_tools_agent/services/ai-platform-service` | `ai-engine`（仓库名变化；`pyproject.toml` 仍叫 `ai-platform-service`） |
-| `law_tools_agent/services/matters-service` | `matter-service`（单数化） |
-| `law_tools_agent/services/users-service` | `user-service`（单数化） |
-| `law_tools_agent/services/auth-service` | `auth-service` |
-| `law_tools_agent/services/consultations-service` | `consultations-service` |
-| `law_tools_agent/services/files-service` | `files-service` |
-| `law_tools_agent/services/gateway-service` | `gateway-service` |
-| `law_tools_agent/services/knowledge-service` | `knowledge-service`（注意：实现已从旧代码迁移/重写，能力边界以当前仓库为准） |
-| `law_tools_agent/services/memory-service` | `memory-service` |
-| `law_tools_agent/services/platform-service` | `platform-service` |
-| `law_tools_agent/services/templates-service` | `templates-service` |
-| `law_tools_agent/services/collector-service` | `collector-service` |
-| `law_tools_agent/services/shared-libs` | `shared-libs` |
-| `law_tools_agent/frontend` | `frontend` |
-
-### 2) 域合并/重组（需要人工确认的部分）
-
-| mono-repo 路径 | 现在的仓库 | 说明 |
-|---------------|-----------|------|
-| `law_tools_agent/services/membership-service` | `billing-service`（推测） | 订阅/权益/用量通常归入 billing 域；以当前代码为准 |
 
 ## 现状差异与迁移注意点（按“代码真实情况”）
 
 ### 1) Python 服务的独立构建约束：shared-libs（跨仓库依赖）
 
-`ai-engine` / `collector-service` / `memory-service` 依赖 `shared-libs`（独立仓库，私有）。
+`ai-engine` / `collector-service` / `memory-service` / `rerank-service` 依赖 `shared-libs`（独立仓库，私有）。
 
 当前采用的工程化策略是：
 
@@ -93,7 +61,11 @@ nav_order: 5
 - Java 微服务：已完成“多仓库独立构建与发布”（容器镜像仓库 + Helm；默认 GHCR，可切换到阿里云 ACR）。
 - Python 微服务：已可“多仓库独立构建与发布”，但需要为仓库配置可读 `shared-libs` 的 Token（通常复用 `GH_PACKAGES_TOKEN`）。
 
-### 2) 旧文档中的技术栈信息可能来自 mono-repo 阶段
+### 2) 文档漂移提示
 
-例如：前端从 React 切到 Vue，向量检索从 Weaviate/Qdrant 迁移到 ES kNN 等。
-本 docs 仓库会以当前仓库实现为准逐步修正这些漂移。
+早期单仓库阶段的技术栈与运行方式与当前多仓库形态可能不同（例如前端框架、检索实现、部署方式等）。
+
+本 docs 仓库会以“当前仓库实现”为准逐步修正漂移：
+
+- “现状/已实现”必须可在代码或 OpenAPI 中验证
+- “规划/待实现”必须明确标注

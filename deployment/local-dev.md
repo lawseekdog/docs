@@ -34,7 +34,7 @@ mvn -q spring-boot:run
 
 ## 2) 多服务联调（现状）
 
-`law_tools_agent/` 属于 mono-repo 阶段的历史产物，当前已逐步废弃；其 `docker-compose.yml` 不再作为正式入口维护。
+历史 mono-repo 阶段的 `docker-compose.yml` 已不再作为正式入口维护。
 
 独立仓库形态下的“一键全栈”编排仍在对齐中（重点是 Python 服务镜像构建与依赖注入）。
 

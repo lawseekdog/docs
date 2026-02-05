@@ -20,7 +20,7 @@ LawSeekDog 是一套「AI Agent 驱动的法律业务平台」的多仓库工程
   - [项目进度与现状](./architecture/progress.md)
   - [微服务拓扑与依赖](./architecture/microservices.md)
   - [数据流与协议（SSE/NDJSON/Internal API）](./architecture/data-flow.md)
-  - [仓库结构与拆分映射（law_tools_agent → 多仓库）](./architecture/repositories.md)
+  - [仓库结构与拆分映射](./architecture/repositories.md)
 - 业务流程
   - [咨询 → 事项（Consultation → Matter）](./flows/consultation-to-matter.md)
   - [工作台目标与工作流（Workbench）](./flows/workbench-goals.md)
