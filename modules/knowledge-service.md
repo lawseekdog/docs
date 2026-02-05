@@ -83,6 +83,6 @@ Neo4j（GraphStore）默认 fail-open：未配置时 GraphRAG 会降级为纯原
 ## 与其它服务的关系
 
 - ai-engine：主要 consumer（atomic/graph-rag-search/element 工具）
-- collector-service：seed 包分发（Playbooks/结构化 seeds/系统 KB 文档清单）
+- collector-service：seed 包分发（结构化 seeds/系统 KB 文档清单）
 - files-service：知识文件与对象存储关联（文件元信息/权限校验）
 - user-service：用户信息（用于归属/审计等）

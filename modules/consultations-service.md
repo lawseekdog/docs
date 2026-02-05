@@ -25,7 +25,7 @@ consultations-service 负责：
 
 ## 核心数据模型（概念）
 
-以当前代码为准（ID 多为 Long，organizationId 多为 String/可为空）：
+以当前代码为准：
 
 - ConsultationSession：会话（可绑定 `matter_id`）
 - ConsultationMessage：会话消息（USER/ASSISTANT 等角色）
@@ -47,10 +47,6 @@ consultations-service 负责：
 - `POST /api/v1/consultations/sessions/{id}/resume`（SSE）
 - `GET  /api/v1/consultations/sessions/{id}/pending_card`（断线重连兜底）
 
-其它：
-
-- attachments/canvas/citations/stats 等 API（以 OpenAPI 为准）
-
 > 组织/用户上下文通常通过 `X-User-Id`、`X-Organization-Id` 传入（也支持 query param 兜底）。
 
 ## 对内 API（/internal）
@@ -71,9 +67,9 @@ consultations-service 负责：
 当 session 尚未绑定 `matter_id` 时，chat/resume 会触发：
 
 - 调用 matter-service：`POST /api/v1/internal/matters/from-consultation`
-- 写回 session.matter_id 与 playbook_id
+- 写回 session.matter_id
 
-这使得咨询对话天然拥有“事项工作流”的承载体（Matter）。
+这使得咨询对话天然拥有“事项态”的承载体（Matter），便于落库、协同与审计。
 
 ### 2) 调用 ai-engine（NDJSON）并转发 SSE
 
@@ -89,11 +85,15 @@ consultations-service 调用 ai-engine：
 - `end` → `end`
 - `progress/task_start/task_end`：可透传给前端用于 UI 反馈
 
-### 3) playbook 获取
+### 3) matter_profile 白名单（不注入 playbook_config）
 
-consultations-service 会在执行前获取/组装 playbook_config（通常来自 platform-service），再作为 context 传入 ai-engine。
+workbench-mode 下，ai-engine 以 `context.matter_profile` 作为事项画像快照输入。
+
+- consultations-service 会从 matter-service 获取 workflow profile
+- 仅保留 ai-engine 允许的白名单字段
+- **不再注入/透传 `playbook_config`**（ai-engine workbench-mode 会拒绝该字段）
 
 ## 现状与边界
 
-- 该服务已具备完整的“流式对话 + 卡片中断”主链路实现。
+- 已具备完整的“流式对话 + 卡片中断 + 自动绑定事项”主链路。
 - “咨询模式不创建 matter”的产品形态当前未实现；现状为咨询自动创建 DRAFT matter（见 `flows/consultation-to-matter.md`）。

@@ -130,7 +130,7 @@ ai-engine/.skills/<skill-name>/
 
 ```mermaid
 flowchart TB
-  P[Planner 决策 skill] --> R[SkillRunner 执行]
+  P[Workflow Router 选择 next_skill] --> R[SkillRunner 执行]
   R --> C[构建上下文: state + SKILL.md + references]
   C --> L[LLM 调用 + tool calls]
   L --> V[输出校验: schema + validate.py]
@@ -176,4 +176,4 @@ flowchart TB
 - `L3`：语义评估测试
 - `integration`：需要真实 LLM 调用的集成测试
 
-建议在变更 skills/playbooks 后至少跑 L1/L2，避免输出契约漂移导致流程卡死。
+建议在变更 skills/workflow_graph 后至少跑 L1/L2，避免输出契约漂移导致流程卡死。

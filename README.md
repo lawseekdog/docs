@@ -14,7 +14,7 @@
 ### 核心模块设计
 | 模块 | 说明 | 文档 |
 |------|------|------|
-| AI Engine | AI 智能引擎（技能编排、Playbook 驱动） | [设计文档](./modules/ai-engine.md) |
+| AI Engine | AI 智能引擎（LangGraph workbench + skills） | [设计文档](./modules/ai-engine.md) |
 | Matter Service | 事项管理（案件全生命周期） | [设计文档](./modules/matter-service.md) |
 | Consultations Service | 咨询会话（实时对话、卡片交互） | [设计文档](./modules/consultations-service.md) |
 | Knowledge Service | 知识库（法规、案例、要素检索） | [设计文档](./modules/knowledge-service.md) |
@@ -31,13 +31,14 @@
 
 ### 业务流程
 - [咨询到事项转化流程](./flows/consultation-to-matter.md)
+- [工作台目标与工作流（Workbench）](./flows/workbench-goals.md)
 - [诉讼案件处理流程](./flows/litigation-workflow.md)
 - [非诉业务处理流程](./flows/non-litigation-workflow.md)
-- [Playbook 阶段设计](./flows/playbook-phases.md)
+- [Playbook 配置规范（Legacy，已废弃）](./flows/playbook-phases.md)
 
 ### 核心实现
 - [Skill 技能系统](./implementation/skill-system.md)
-- [Planner 决策引擎](./implementation/planner-engine.md)
+- [Workflow 路由与执行](./implementation/planner-engine.md)
 - [卡片交互机制](./implementation/card-interaction.md)
 - [知识检索 RAG](./implementation/knowledge-rag.md)
 - [记忆提取与召回](./implementation/memory-extraction.md)
@@ -56,25 +57,22 @@
 
 ### 后端
 - **Java 21** + Spring Boot 3.3
-- **Python 3.12** + FastAPI + LangGraph
+- **Python** + FastAPI + LangGraph
 - **PostgreSQL** + Flyway 迁移
-- **Elasticsearch** 全文检索
-- **Weaviate** 向量数据库
+- **Elasticsearch（可选）** keyword/vector/hybrid
+- **Neo4j（可选）** GraphRAG/关系图
 - **Rerank Service**（CrossEncoder + BM25）结果重排（可选）
 - **Redis** 缓存
 - **MinIO** 对象存储
 
 ### 前端
-- **React 18** + TypeScript
+- **Vue3** + TypeScript
 - **Vite** 构建
-- **TailwindCSS** 样式
-- **Zustand** 状态管理
 
 ### AI/ML
 - **LangGraph** Agent 编排
 - **OpenRouter** LLM 网关
-- **DeepSeek V3** 默认模型
-- **Qwen3 Embedding** 向量化
+- 默认模型/Embedding：以运行时配置为准
 
 ## 📁 仓库结构
 

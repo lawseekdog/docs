@@ -26,7 +26,7 @@ nav_order: 5
 | `organization-service` | Java/Spring Boot | 运行时 | 组织/律所/成员 |
 | `billing-service` | Java/Spring Boot | 运行时 | 订阅/用量/额度（MVP 形态） |
 | `notification-service` | Java/Spring Boot | 运行时 | 通知（MVP 形态） |
-| `platform-service` | Java/Spring Boot | 运行时 | 平台配置、PlaybookConfig、FeatureFlag、Tag 等 |
+| `platform-service` | Java/Spring Boot | 运行时 | 平台配置、SystemConfig、FeatureFlag、Tag 等（PlaybookConfig 为历史兼容） |
 | `consultations-service` | Java/Spring Boot | 运行时 | 对话会话 + SSE；对接 `ai-engine` 的 NDJSON 流 |
 | `matter-service` | Java/Spring Boot | 运行时 | 事项/待办/阶段推进；对接 `ai-engine` |
 | `knowledge-service` | Java/Spring Boot | 运行时 | 知识库：文档/Chunk、原子检索、GraphRAG（ES/Neo4j 可选） |
@@ -35,7 +35,8 @@ nav_order: 5
 | `templates-service` | Java/Spring Boot | 运行时 | 模板/文书生成（与 `ai-engine` 交互） |
 | `gateway-service` | Java/Spring Boot | 运行时（占位） | 当前更偏“样板/占位”，不等同于集群入口网关 |
 | `ai-engine` | Python/FastAPI | 运行时 | AI 执行引擎（LangGraph、skills、NDJSON 事件流） |
-| `collector-service` | Python/FastAPI | 运行时 | Seed Packages（系统资源/Playbooks/结构化种子）分发到各服务 |
+| `collector-service` | Python/FastAPI | 运行时 | Seed Packages（系统资源/字典/结构化种子）分发到各服务 |
+| `rerank-service` | Python/FastAPI | 运行时（可选） | 检索结果重排（CrossEncoder + BM25 fallback） |
 | `shared-libs` | Python package | 运行时依赖 | Python 侧通用库（contracts、clients、config/logging） |
 | `lawseekdog-seed-init` | Python CLI | 工具 | 调用 `collector-service` internal seed 接口的轻量 CLI |
 | `e2e-tests` | Python/pytest | 工具 | 端到端测试 |

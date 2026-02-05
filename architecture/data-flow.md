@@ -1,203 +1,107 @@
 # 数据流架构
 
-## 核心数据流
+本页描述几条核心链路的数据流转方式（以 workbench-mode 为准）。
 
-### 1. 咨询对话流程
+## 1) 咨询对话（SSE ↔ NDJSON）
 
-```
-用户消息
-    │
-    ▼
-┌─────────────────┐
-│ Consultations   │ ─── 创建/更新 Session
-│ Service         │ ─── 存储 Message
-└────────┬────────┘
-         │
-         ▼ HTTP POST /chat
-┌─────────────────┐
-│   AI Engine     │
-│                 │
-│ ┌─────────────┐ │
-│ │  Planner    │ │ ─── 决策下一步技能
-│ └──────┬──────┘ │
-│        │        │
-│ ┌──────▼──────┐ │
-│ │ Run Skill   │ │ ─── 执行技能
-│ └──────┬──────┘ │
-│        │        │
-│ ┌──────▼──────┐ │
-│ │ Sync Data   │ │ ─── 同步状态到 Matter
-│ └─────────────┘ │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ 返回结果        │
-│ - response      │ ─── AI 回复文本
-│ - card          │ ─── 交互卡片（可选）
-│ - state_patch   │ ─── 状态更新
-└─────────────────┘
+- 对前端：SSE（`text/event-stream`）
+- 对 ai-engine：NDJSON（`application/x-ndjson`）
+
+```mermaid
+sequenceDiagram
+  participant FE as Frontend
+  participant CONS as consultations-service
+  participant MAT as matter-service
+  participant AIE as ai-engine
+
+  FE->>CONS: POST /chat (SSE)
+  CONS->>CONS: 落库消息/附件
+  alt session 未绑定 matter
+    CONS->>MAT: POST /api/v1/internal/matters/from-consultation
+    MAT-->>CONS: matter_id
+  end
+  CONS->>AIE: POST /api/v1/internal/ai/agent/execute/stream (NDJSON)
+  AIE-->>CONS: token/progress/card/result/end
+  CONS-->>FE: delta/card/end
 ```
 
-### 2. 知识检索流程
+卡片中断：
 
-```
-用户查询
-    │
-    ▼
-┌─────────────────┐
-│   AI Engine     │
-│ (Skill: search) │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Knowledge Svc   │
-│                 │
-│ 1. Query Rewrite│ ─── 查询改写
-│ 2. Hybrid Search│ ─── 混合检索
-│    ├─ ES BM25   │     ├─ 关键词匹配
-│    └─ Weaviate  │     └─ 语义向量
-│ 3. Rerank       │ ─── 重排序
-│ 4. Return Top-K │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ 检索结果        │
-│ - laws[]        │ ─── 法规条文
-│ - cases[]       │ ─── 相关案例
-│ - elements[]    │ ─── 要素匹配
-└─────────────────┘
+- ai-engine 产出 `event=card` 后结束本轮流
+- 前端提交答案走 `/resume`，consultations-service 转发到 ai-engine 的 resume 流
+
+## 2) 知识检索（skill/tool → knowledge-service）
+
+```mermaid
+flowchart TD
+  A[ai-engine skill] -->|internal HTTP| K[knowledge-service]
+  K --> ES[(Elasticsearch 可选)]
+  K --> N4[(Neo4j 可选)]
+  K -. optional .-> R[rerank-service]
+  K --> A
 ```
 
-### 3. 记忆提取与召回
+说明：具体检索策略（keyword/vector/hybrid、是否 rerank）以 knowledge-service 当前实现为准。
 
-```
-对话上下文
-    │
-    ▼
-┌─────────────────┐
-│ Memory Service  │
-│                 │
-│ ┌─────────────┐ │
-│ │ Fact Extract│ │ ─── 从对话提取事实
-│ └──────┬──────┘ │
-│        │        │
-│ ┌──────▼──────┐ │
-│ │ Store (PG)  │ │ ─── 幂等写入事实（偏好/摘要/证据线索）
-│ └─────────────┘ │
-└─────────────────┘
+## 3) 记忆提取与召回（memory-service）
 
-后续对话
-    │
-    ▼
-┌─────────────────┐
-│ Memory Service  │
-│                 │
-│ 1. Keyword BM25 │ ─── 关键词召回（PG）
-│ 2. Rerank (opt) │ ─── rerank-service（CrossEncoder/BM25）
-│ 3. Return Facts │ ─── 返回相关事实
-└─────────────────┘
+- 召回：ai-engine 在合适时机调用 memory-service 返回相关事实/偏好
+- 抽取：可由 ai-engine 后台触发（以当前实现为准）
+
+## 4) 事项同步（sync_data → matter-service）
+
+ai-engine 每次执行 skill 后，都会在可中断点前执行 `sync_data`，把结构化产物与决策字段写回 matter-service：
+
+```mermaid
+flowchart TD
+  S[run_skill 输出] --> SYNC[sync_data]
+  SYNC -->|internal HTTP| MAT[matter-service]
+  MAT --> P[(PostgreSQL)]
 ```
 
-### 4. 事项状态同步
+## 状态存储（建议视角）
 
-```
-AI Engine 技能执行完成
-    │
-    ▼
-┌─────────────────┐
-│ skill_output    │
-│ - profile       │ ─── 案件画像更新
-│ - data          │ ─── 业务数据更新
-│ - card          │ ─── 待办卡片
-└────────┬────────┘
-         │
-         ▼ HTTP POST /api/v1/internal/matters/{id}/sync
-┌─────────────────┐
-│ Matter Service  │
-│                 │
-│ 1. Merge Profile│ ─── 合并画像字段
-│ 2. Merge Data   │ ─── 合并业务数据
-│ 3. Upsert Task  │ ─── 创建/更新待办
-│ 4. Update Phase │ ─── 更新阶段状态
-└─────────────────┘
-```
+### Session（consultations-service）
 
-## 状态存储
-
-### Session State (Consultations Service)
+会话侧主要存“消息/附件/会话元信息 + matter_id 绑定”，示例：
 
 ```json
 {
-  "session_id": "uuid",
-  "matter_id": "uuid",
-  "user_id": "uuid",
-  "engagement_mode": "legal_consultation | start_service",
-  "service_type_id": "litigation_civil_prosecution",
-  "playbook_id": "pb_xxx",
-  "current_task_id": "intake",
-  "profile": {
-    "client_role": "plaintiff",
-    "summary": "...",
-    "plaintiff": { "name": "..." },
-    "defendant": { "name": "..." }
-  },
+  "session_id": "123",
+  "matter_id": "456",
+  "user_id": 1001,
+  "tenant_id": "org_x",
+  "service_type_id": "civil_prosecution",
+  "messages": ["..."],
+  "attachments": ["..."]
+}
+```
+
+### Matter（matter-service）
+
+事项侧是真源，存“业务分类 + 结构化产物 + 待办/阶段/交付件”，示例：
+
+```json
+{
+  "matter_id": "456",
+  "matter_category": "litigation",
+  "cause_of_action_code": "CIV.CAUSE.CONTRACT.SALE",
+  "service_type_id": "civil_prosecution",
+  "profile": {"summary": "..."},
   "data": {
-    "litigation": { "issues": [...] },
-    "evidence": { "list": [...] }
-  },
-  "messages": [...]
+    "workbench": {"goal": "case_analysis"},
+    "litigation": {"issues": [], "strategies": []},
+    "work_product": {"analysis_report": {"format": "markdown", "content": "..."}}
+  }
 }
 ```
 
-### Matter State (Matter Service)
+### Agent checkpoint（ai-engine）
 
-```json
-{
-  "matter_id": "uuid",
-  "organization_id": "uuid",
-  "client_id": "uuid",
-  "lawyer_id": "uuid",
-  "service_type_id": "litigation_civil_prosecution",
-  "playbook_id": "pb_xxx",
-  "status": "active",
-  "current_phase": "intake",
-  "profile": { ... },
-  "data": { ... },
-  "tasks": [
-    {
-      "id": "uuid",
-      "task_key": "confirm_claim_path",
-      "status": "pending",
-      "actor": "lawyer",
-      "payload": { ... }
-    }
-  ]
-}
-```
+ai-engine 使用 LangGraph checkpointer 在 Postgres 存储 thread state（用于中断恢复与回放）；`thread_id` 通常与 session 绑定并做 namespace 隔离。
 
-## 数据一致性
+## 一致性与幂等（原则）
 
-### 最终一致性模型
-
-- AI Engine 是状态的"生产者"
-- Matter Service 是状态的"持久化层"
-- 通过 `sync_data` 节点实现异步同步
-- 使用 `task_key` 实现幂等更新
-
-### 冲突解决
-
-1. **Profile 合并**：深度合并，新值覆盖旧值
-2. **Data 合并**：按 group.field 路径合并
-3. **Task 更新**：基于 `task_key` 幂等 upsert
-
-## 缓存策略
-
-| 数据类型 | 缓存位置 | TTL | 失效策略 |
-|----------|----------|-----|----------|
-| 用户信息 | Redis | 5min | 更新时失效 |
-| 会话状态 | Redis | 30min | 活动时续期 |
-| 知识检索 | Redis | 1h | LRU |
-| Playbook | 内存 | 启动加载 | 重启刷新 |
+- ai-engine 是结构化产物的“生产者”，matter-service 是“真源持久化层”。
+- 同步接口建议幂等（按 todo_key / deliverable_key 等做 upsert），避免重复写入。
+- 路由应幂等：下一步只由当前 state 决定（workbench router）。

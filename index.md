@@ -8,7 +8,7 @@ nav_order: 1
 LawSeekDog 是一套「AI Agent 驱动的法律业务平台」的多仓库工程组。
 
 - 业务微服务：Java 21 + Spring Boot（DDD 分层、Google REST、统一 `/api/**` 与 `/api/v1/internal/**` 边界）
-- AI 引擎：Python + FastAPI + LangGraph（技能/Playbook 驱动、可中断的人机协同）
+- AI 引擎：Python + FastAPI + LangGraph（技能驱动 + Workbench 工作流编排、可中断的人机协同）
 - 工程化：`ai-boot-framework`（脚手架/BOM/Starter/Archetype）+ `infra-templates`（统一 CI/CD）+ K8s/Helm
 
 本网站内容以仓库现状为准；涉及“规划/待实现”的内容会明确标注，避免把旧实现/设想写成既成事实。
@@ -23,12 +23,12 @@ LawSeekDog 是一套「AI Agent 驱动的法律业务平台」的多仓库工程
   - [仓库结构与拆分映射（law_tools_agent → 多仓库）](./architecture/repositories.md)
 - 业务流程
   - [咨询 → 事项（Consultation → Matter）](./flows/consultation-to-matter.md)
-  - [诉讼 Playbook（示例：民事起诉）](./flows/litigation-workflow.md)
-  - [非诉 Playbook（示例：合同审查）](./flows/non-litigation-workflow.md)
-  - [Playbook 配置规范（v2）](./flows/playbook-phases.md)
+  - [工作台目标与工作流（Workbench）](./flows/workbench-goals.md)
+  - [诉讼工作流（示例：民事起诉）](./flows/litigation-workflow.md)
+  - [非诉工作流（示例：合同审查）](./flows/non-litigation-workflow.md)
 - 核心实现
   - [Skill 技能系统（SKILL.md + output_schema + validate）](./implementation/skill-system.md)
-  - [Planner 决策引擎（策略链 + LLM 兜底）](./implementation/planner-engine.md)
+  - [Workflow 路由与执行（Workbench）](./implementation/planner-engine.md)
   - [卡片交互机制（ask_user / resume）](./implementation/card-interaction.md)
   - [知识检索与 GraphRAG（当前实现与边界）](./implementation/knowledge-rag.md)
   - [记忆服务（当前实现与规划）](./implementation/memory-extraction.md)
@@ -64,7 +64,7 @@ flowchart TB
   FE -->|REST| AUTH[auth-service]
   FE -->|REST| BILL[billing-service]
   FE -->|REST| NOTIF[notification-service]
-  FE -->|REST| PLAT[platform-service<br/>配置/Playbook]
+  FE -->|REST| PLAT[platform-service<br/>配置/字典/FeatureFlags]
 
   CONS -->|NDJSON stream| AIE[ai-engine<br/>LangGraph 执行/技能]
   MAT -->|internal HTTP| AIE

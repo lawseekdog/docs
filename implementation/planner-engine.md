@@ -1,142 +1,68 @@
 ---
-title: Planner 决策引擎
+title: Workflow 路由与执行（Workbench）
 parent: 核心实现
 nav_order: 2
 ---
 
-# Planner 决策引擎（ai-engine）
+# Workflow 路由与执行（ai-engine / workbench-mode）
 
-本页描述 `ai-engine` 如何在每一轮对话/事项推进中选择“下一步做什么”（call skill / chat respond / phase replan / finish）。
+本页描述 `ai-engine` 在每一轮对话/事项推进中如何决定“下一步做什么”（选择目标、执行 skill、同步、门禁、中断恢复）。
 
-核心目标：让流程决策可解释、可配置、可回归，避免“纯 LLM 选技”导致不可控。
+结论：当前主链路为 **LangGraph workbench 工作流**，路由逻辑内聚在 `workflow_graph.py`，不再依赖 Playbook/Phase DSL。
 
-## 1) 输入：state + playbook + phase
+## 1) 输入：state + context（不支持 playbook_config）
 
-Planner 的最小输入：
+workbench-mode 的最小输入：
 
-- `state`：统一状态（thread state），包含 `profile`、data 叶子字段、附件/文件信息、当前 phase 等
-- `playbook`：流程配置（phases、gate/checkpoints、rollback_rules 等；`allowed_skills`/`priority_rules` 属于历史字段，当前实现不再作为确定性裁决源）
-- `phase`：当前阶段配置（从 playbook.phases 中按 `current_task_id` 选取）
-
-这些数据通常由上游（consultations-service/matter-service）组装后传入 ai-engine。
-
-## 2) 可用技能集合（强收敛）
-
-ai-engine 在选技前会先计算“当前阶段可执行技能列表”（available_skills），过滤规则：
-
-1. 候选技能集合由 `Skill.availability` 自动发现（global/phase_bound/phase_after）
-2. 技能必须满足 `skill.meta.requires`（all/any 条件）
-3. 排除 internal / api_call_only 技能
-3. 技能必须满足 `skill.meta.requires`（all/any 条件）
-4. 排除 internal / api_call_only 技能
-
-> 代码位置：`ai-engine/src/application/skill_executor/planner.py`
-
-## 3) 决策策略链（Chain of Responsibility）
-
-Planner 采用“策略链”从高优先级到低优先级依次尝试，首个命中即返回。
-
-默认顺序（以代码为准）：
-
-1. `force_skill`
-2. `priority_rules`
-3. `query_mode`
-4. `phase_complete`
-5. `deterministic`
-6. `llm_planner`
-7. `no_available_skills`
-
-> 代码位置：`ai-engine/src/application/agent/planner/chain.py`
-
-### 3.1 force_skill：强制指定技能
-
-用于“外部 API 直接调用某个技能”或调试场景：
-
-- 上游在 context/state 中写入 `force_skill=<skill>`
-- Planner 直接选择该技能（仍受可用性过滤：availability/requires/visibility/api_call_only 等约束）
-
-典型场景：
-
-- `/api/v1/internal/ai/skills/{skill}/execute`（技能直跑）
-
-### 3.2 priority_rules：优先规则（确定性 + 兼容提示）
-
-新架构：确定性优先规则由 Skill 自声明（`Skill.priority_rule`），不再从 playbook/phase.priority_rules 读取。
-
-- 确定性实现：`ai-engine/src/application/agent/planner/strategies/priority_rules.py`
-- 兼容提示：LLM 兜底规划器仍会把 playbook/phase.priority_rules 格式化为“参考建议”（不强制）注入 prompt：`ai-engine/src/application/skill_executor/llm_planner.py`
+- `state`：统一状态（thread state），包含 `profile`、`data.*`、附件/文件信息、当前 task_id 等
+- `context`：每轮上下文（来自 consultations-service/matter-service），常见字段：
+  - `user_id` / `tenant_id` / `session_id(thread_id)` / `matter_id`
+  - `service_type_id`（可选：路由提示/标签）
+  - `attachment_file_ids`（本轮新附件）
+  - `matter_profile`（事项画像快照，白名单字段）
 
 重要约束：
 
-- 若规则命中但技能不可执行，会直接抛错（提示检查 availability 与 requires），避免“规则形同虚设”。
+- workbench-mode **拒绝** `playbook_config` 注入（若上游仍传会报错）。
 
-> 代码位置：`ai-engine/src/application/agent/planner/strategies/priority_rules.py`
+## 2) 顶层图：节点与子图
 
-### 3.3 query_mode：旁路问答模式
+主入口图（简化）：
 
-当 state 处于 `_query_mode` 时：
+- 系统节点：`ingest` / `hydrate` / `memory` / `router`
+- 执行基础设施节点：`dispatch` / `run_skill` / `parallel_skills` / `sync_data` / `human_review` / `extract`
+- workbench 子图：
+  - `materials`（新材料洞察/分类/解析）
+  - `goal_gate`（目标选择/确认）
+  - `documents_stale`（材料变更 → 输出过期 → 二次确认）
+  - `policy_gate`（交付门禁/确认）
+  - per-goal 子图：`case_analysis` / `contract_review` / `legal_opinion` / `doc_drafting` / `judgment_prediction` / `work_plan`
+  - `docgen`（草稿/生成/质量门禁/可选人工复核）
 
-- 仅允许从当前可用技能集合（available_skills）中选择“检索/问答类技能”
-- 避免问答场景误触发阶段推进与门控（workflow side effects）
+## 3) 路由优先级（简化）
 
-> 代码位置：`ai-engine/src/application/agent/planner/strategies/query_mode.py`
+路由应尽量确定性，且只依赖当前 state（幂等）。典型优先级：
 
-### 3.4 phase_complete：阶段完成 → replan 到下一阶段
+1. 若存在新附件/新材料 → 先走 `materials` 子图
+2. 若 goal 未确定 → 走 `goal_gate` 子图（必要时 ask_user）
+3. 若文书/产物过期（stale）且未确认 → 走 `documents_stale` 子图
+4. 否则 → 进入当前 goal 子图推进（必要时生成交付件）
+5. 输出前统一经过 `policy_gate` 与 `docgen`（如果有推荐/选择的文书）
 
-当 PhaseManager 判定当前 phase 已完成时：
+## 4) ask_user / resume（中断恢复）
 
-- 若仍有下一阶段：`action=replan`，并将 `current_task_id` 切到 next phase
-- 若无下一阶段：`action=finish`
+- 任何需要用户/律师确认的点，统一通过卡片（`ask_user`）进入 `human_review` 中断。
+- 关键原则：中断前必须先 `sync_data`，把 card 与必要状态落库，保证断线可恢复。
+- `/resume` 后继续以同一个 `thread_id` 从 checkpoint 状态推进。
 
-> 代码位置：`ai-engine/src/application/agent/planner/strategies/phase_complete.py`
+## 5) Legacy：Planner/Playbook 模式
 
-### 3.5 deterministic：尽量不用 LLM 的“缺口覆盖”选技
+早期设计曾通过 “Playbook + PhaseManager + Planner” 做流程 DSL。
 
-当可用技能 > 1 时：
+当前 workbench-mode 以 LangGraph graph/subgraph 替代该模式；相关字段/接口可能仍在部分服务中保留用于历史兼容，但不应作为主链路依赖。
 
-- 根据当前阶段缺口（missing_goals）与技能 outputs.provides（profile + data fields）尝试选择唯一能覆盖缺口的技能
-- 若存在唯一最优技能：直接执行
-- 否则交给 LLM 兜底
+## 参考（代码真源）
 
-> 代码位置：`ai-engine/src/application/agent/planner/strategies/deterministic.py`
-
-### 3.6 llm_planner：LLM 兜底选技
-
-当确定性策略都无法给出唯一答案时：
-
-- LLM 在当前可用技能集合（available_skills）约束内选择下一技能
-- 必须返回可解释原因（reason），用于 tracing 与回放
-
-> 该策略保证“可用性”，但不应成为唯一手段；priority_rules 与 deterministic 才是主路径。
-
-### 3.7 no_available_skills：兜底
-
-当无可执行技能时：
-
-- 若仍可 chat respond：输出自然语言回复
-- 或直接 finish
-
-## 4) PhaseManager：门控与缺口（gate/checkpoints）
-
-PhaseManager 负责：
-
-- 校验 playbook 配置（禁止写法漂移导致卡死）
-- 判断 phase 是否完成
-- 计算 missing_goals（供 deterministic 策略使用）
-
-关键约束（来自校验逻辑）：
-
-- gate_field/checkpoints 是点路径（不允许写 `state.` 前缀）
-- 禁止 `data.<group>.<field>`：data 侧必须直接写叶子字段名
-- profile/decisions 字段必须在允许列表内（避免随意造字段）
-- 写了 gate_field 必须配 gate_value 或 gate_check（禁止隐式兜底）
-
-> 代码位置：`ai-engine/src/application/skill_executor/phase_manager.py`
-
-## 5) 可回归与可观测（建议）
-
-为了让 Planner 行为“可验证”：
-
-- playbook 变更必须通过静态校验（PhaseManager 已做强收敛）
-- skill 输出字段必须通过 schema + validate（见 `implementation/skill-system.md`）
-- 关键链路需记录 trace（ai-engine 内置 execution trace；consultations-service 会转发 progress/task_start/task_end 等事件）
+- `ai-engine/src/application/agent/graphs/workflow_graph.py`
+- `ai-engine/src/application/execution/base.py`
+- `ai-engine/docs/unified_agent_state.md`

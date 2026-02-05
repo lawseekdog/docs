@@ -10,10 +10,12 @@ nav_order: 1
 
 `ai-engine` 是 LawSeekDog 的 AI 执行引擎，负责：
 
-- 基于 LangGraph 执行 agent 图（planner → run_skill → …）
+- 基于 LangGraph 执行 workbench 工作流图（router → dispatch → run_skill → sync_data → …）
 - 维护 thread state（Postgres checkpoint）
 - 对外（internal）提供 agent 执行 API（含 NDJSON 流式事件）
 - 管理 skills（.skills 目录）与工具调用（tool handlers）
+
+当前主链路为 **playbook-free（不再注入/解析 `playbook_config`）**：目标选择、阶段门禁与交付门禁都在 graph/subgraph 中完成（见 `flows/workbench-goals.md`）。
 
 该服务默认以 internal API 形式被 `consultations-service`、`matter-service`、`templates-service` 等调用。
 
@@ -89,7 +91,7 @@ NDJSON 单行格式：
 - knowledge-service：知识检索（atomic/GraphRAG）
 - memory-service：事实/记忆（当前抽取能力占位）
 - files-service：文件信息/解析（供技能读取材料）
-- platform-service：playbook/config/tag/feature flag 等配置读取
+- platform-service：系统配置/字典/标签/feature flag 等（PlaybookConfig 属于历史兼容，逐步下线）
 
 ## 状态（工程化）
 

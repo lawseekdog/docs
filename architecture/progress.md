@@ -28,7 +28,7 @@ nav_order: 2
 ## 2) 运行时链路可用性（按关键路径）
 
 - 对话链路（Frontend → consultations-service SSE → ai-engine NDJSON）：骨架已具备（需结合环境配置验证）。
-- 事项链路（Matter/Phase/Todo + Playbook）：matter-service 作为真源，playbook 由 platform-service 承载；ai-engine 负责技能推进。
+- 事项链路（Matter/Todo/PhaseProgress + Workbench workflow）：matter-service 作为真源；ai-engine 以 LangGraph 工作流推进并同步产物。
 - 知识链路（knowledge-service）：已具备 Postgres 真源 + 可选 ES/Neo4j 的检索/GraphRAG 能力，且支持 seed 导入。
 - 记忆链路（memory-service）：以结构化存储为主；“抽取”能力目前处于占位/待完善状态（见 `implementation/memory-extraction.md`）。
 

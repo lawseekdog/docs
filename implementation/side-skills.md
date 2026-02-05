@@ -1,46 +1,45 @@
-# 旁路技能与确认型技能（收敛清单）
+# 旁路技能与确认型能力（收敛清单）
 
-目标：把“流程推进类主技能”与“旁路/确认/确定性护栏技能”区分清楚，便于收敛与维护。
+目标：把“主链路产物技能”与“旁路/确认/确定性护栏能力”区分清楚，便于收敛与维护。
 
-## 旁路技能（Side Skills）
+## 旁路能力（Side Skills / System Nodes）
 
-旁路技能一般不负责推进主流程产出结论，而是作为护栏/预处理/导购在特定条件下插入执行（常见来源：`Skill.priority_rule` 的确定性命中，或咨询态循环阶段）。
+旁路能力一般不直接产出最终结论，而是作为护栏/预处理/门禁在特定条件下插入执行。
 
 ### file-classify（文件分类）
+
 - 用途：对新附件做类型识别/归类，写入 `data.files.file_classifications`
-- 触发：`Skill.priority_rule` 命中（例如本轮有新附件且未分类）
-- 是否调用 LLM：是（preprocess 只准备输入，分类由 LLM 完成）
-- 收敛建议：保留为旁路技能；不要把分类逻辑掺进各 intake 技能，避免重复与漂移
+- 触发：通常由 `materials` 子图优先触发（本轮有新附件/材料指纹变化）
+- 收敛建议：保留为旁路能力；不要把分类逻辑掺进各 intake 技能，避免重复与漂移
 
-### system_action:kickoff（事项启动统一入口，系统节点）
-- 用途：统一开场白 + 通过卡片收集 `profile.facts` + 上传材料 `attachment_file_ids`
-- 触发：各 playbook 首阶段（`phase.system_action = "kickoff"`，由 `system_phase` 节点发卡并 interrupt）
-- 是否调用 LLM：否（确定性 UI 步骤，不走 skill registry）
-- 收敛建议：保留为系统节点；不要放在 skills 目录，避免 registry 膨胀与脚本/校验成本
+### human_review（统一中断点）
 
-## 确认型技能（Confirm/Selection Skills）
+- 用途：承接所有 `ask_user` 卡片中断（统一的人机协同入口）
+- 触发：任何子图/skill 需要补问/选择/确认时
+- 关键约束：进入中断前必须先 `sync_data`（保证断线可恢复）
 
-这类技能的核心价值是：把关键决策落到可审计的字段里，并通过卡片让用户确认，避免模型“自作主张”推进。
+## 确认型能力（Confirm/Selection）
 
-### documents（文书推荐与选择）
-- 用途：从 `playbook.document_pool` 选择 1-5 个文书，写入 `profile.decisions.selected_documents`
-- 是否调用 LLM：是（但若已选过会在 preprocess 直接跳过）
-- 收敛建议：保留；它把“生成哪些文书”显式化，便于回溯与复用
+这类能力的核心价值是：把关键决策落到可审计字段里，并通过卡片让用户确认，避免模型“自作主张”推进。
 
-### work-plan（阶段计划生成与确认）
-- 用途：把策略落为可执行计划 `profile.work_plan`（draft/confirmed），可由系统后处理发卡确认
-- 是否调用 LLM：是（但 confirmed 时会跳过）
-- 收敛建议：保留；计划属于高风险输出，建议保留“确认”这一层
+### 文书选择与复核（docgen 子图）
 
-### knowledge-deposit（知识沉淀与入库）
-- 用途：抽取 1-8 条候选知识并让用户选择是否入库（或跳过），写入 data/profile 相应字段
-- 是否调用 LLM：候选生成阶段会调用 LLM；用户选择后入库在 preprocess 中确定性执行
-- 收敛建议：保留；它把“可复用经验”沉淀为显式资产，并有明确的隐私化约束
+- 用途：
+  - 基于 `data.work_product.recommended_documents` 推荐交付件
+  - 记录用户/律师确认到 `profile.decisions.selected_documents`、`profile.decisions.document_reviewed` 等字段
+- 触发：当输出阶段产生推荐文书，且需要生成/复核时
+- 收敛建议：保留在 `docgen` 子图中作为统一能力（而不是散落在各业务子图/技能里）
 
-## 未被 playbook 直接引用的技能（仍可能保留）
+### policy_gate（交付门禁）
 
-以下技能在 seed playbooks 中未直接出现，但可能用于：API 强制调用（force_skill）、内部流程、后台任务或后续扩展：
+- 用途：对“可交付/需复核/需修改”做统一门禁与确认（高风险输出必须拦住）
+- 触发：在各 goal 子图产出后、交付前
+
+## 未被主链路直接引用的技能（仍可能保留）
+
+以下技能可能用于：API 强制调用（force_skill）、后台任务或后续扩展：
+
 - memory-extraction：对话记忆提取（常作为后台/旁路能力）
 - knowledge-ingest：知识库入库增强（internal）
-- document-editing：文书修改（用户驱动触发，不一定走 playbook）
+- document-editing：文书修改（用户驱动触发，不一定走主链路）
 - sample-structure-parse：范文结构解析（internal；用于把 DOCX 范文萃取为可复用模板结构）

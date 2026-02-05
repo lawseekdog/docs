@@ -6,7 +6,7 @@ nav_order: 1
 
 # 咨询 → 事项（Consultation → Matter）
 
-本页描述“用户从一次咨询对话开始，系统如何落库、如何绑定事项、如何进入 Playbook 驱动的流程”的真实链路。
+本页描述“用户从一次咨询对话开始，系统如何落库、如何绑定事项、如何进入 Workbench（LangGraph）工作流”的真实链路。
 
 ## 现状结论（重要）
 
@@ -14,9 +14,9 @@ nav_order: 1
 
 - `consultations-service` 在对话过程中会 **确保会话绑定一个 matter**（若 session 尚未绑定，会通过 internal 接口创建 matter）
 - 创建 matter 后，会自动创建若干初始 todo（例如 intake 收集、律所派单等）
-- 后续 AI 引擎执行以 `thread_id`（通常与 session/matter 绑定）推进 playbook 阶段与卡片中断
+- 后续 AI 引擎执行以 `thread_id`（通常与 session/matter 绑定）推进 LangGraph 工作流与卡片中断
 
-因此，“咨询 → 事项”更像“咨询态入口 → 自动生成一个 DRAFT 事项 → 按 Playbook 推进”。
+因此，“咨询 → 事项”更像“咨询态入口 → 自动生成一个 DRAFT 事项 → 在工作台工作流中推进”。
 
 ## 1) 入口 API（对前端）
 
@@ -57,16 +57,14 @@ sequenceDiagram
   participant FE as Frontend
   participant CONS as consultations-service
   participant MAT as matter-service
-  participant PLAT as platform-service
   participant AIE as ai-engine
 
   FE->>CONS: POST /chat (SSE)
   CONS->>CONS: 落库用户消息
   alt session 未绑定 matter
     CONS->>MAT: POST /api/v1/internal/matters/from-consultation
-    MAT-->>CONS: matter_id + playbook_id
+    MAT-->>CONS: matter_id
   end
-  CONS->>PLAT: 获取 playbook_config（internal）
   CONS->>AIE: streamExecuteAgent (NDJSON)
   AIE-->>CONS: token/progress/card/result/end
   CONS-->>FE: delta/card/end
@@ -85,9 +83,9 @@ matter-service 创建 matter 时会创建 intake 相关 todo；在后续对话�
   - 事项画像/决策字段（`profile.*`）
   - 结构化分析结果（例如 `issues`、`strategies`、`evidence_analysis` 等）
   - todo 的 upsert/完成（按 todo_key 幂等）
-- matter-service 在满足条件时可将事项推进到下一阶段（由 Playbook gate/checkpoints 决定）
+- matter-service 负责承载“事项状态/待办/阶段进度”等；阶段与门禁由 ai-engine 的 LangGraph 子图路由实现
 
-> 具体阶段/技能/门控写法参见 `flows/playbook-phases.md` 与 `implementation/planner-engine.md`。
+> 目标与顶层路由参见：`flows/workbench-goals.md` 与 `implementation/planner-engine.md`。
 
 ## 5) 目前仍需要补齐/确认的点（真实状态）
 

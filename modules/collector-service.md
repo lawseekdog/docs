@@ -10,7 +10,7 @@ nav_order: 2
 
 collector-service 在当前系统里承担两类职责：
 
-1) Seed Packages 分发（系统资源/Playbooks/结构化 seeds/模板资源）  
+1) Seed Packages 分发（系统资源/字典/结构化 seeds/模板资源等）  
 2) 采集/复核工作流（sources/runs/documents 的管理与回放；以当前实现为准）
 
 对于“多服务配置一致性”，Seed Packages 是更关键的主链路（见 `implementation/seed-packages.md`）。

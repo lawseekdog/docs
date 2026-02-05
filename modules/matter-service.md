@@ -8,14 +8,15 @@ nav_order: 4
 
 ## 定位
 
-matter-service 是“事项（Matter）”的真源服务，负责法律服务的全生命周期承载：
+matter-service 是“事项（Matter）”的真源服务，负责法律服务的全生命周期承载与协同：
 
-- Matter：事项主实体（状态、服务类型、playbook、关联文件、承办信息等）
-- Todo：待办任务（用于工作台/派单/阶段确认等）
-- 阶段推进：与 Playbook 门控/确认点协同
-- 结构化产物承载：证据分析、争点、策略、风险评估等（以当前字段与 API 为准）
+- Matter：事项主实体（状态、业务分类、服务标签、关联文件、承办信息等）
+- Todo：待办任务（工作台派单、确认点、交付复核等）
+- PhaseProgress：阶段/里程碑进度（用于时间线展示与过程追踪）
+- Deliverables：交付件索引（file_id / presigned_url 等）
+- 对内同步：接收 `ai-engine` 的结构化产物与决策字段同步
 
-在当前实现中，“咨询会话”会自动创建一个 DRAFT matter（参见 `flows/consultation-to-matter.md`）。
+> 重要：事项的“流程编排/门禁/下一步做什么”由 `ai-engine` 的 LangGraph 工作流负责；matter-service 不承担 Playbook/编排器角色。
 
 ## 技术栈
 
@@ -25,17 +26,19 @@ matter-service 是“事项（Matter）”的真源服务，负责法律服务�
 
 ## 核心数据模型（概念）
 
-以当前代码为准（ID 多为 Long）：
+以当前代码为准：
 
 - Matter
-  - `status`：例如 `DRAFT` 等
-  - `service_type_id`：决定 playbook 与业务类型
-  - `playbook_id`：从 platform-service 的 playbook configs 解析/缓存
-  - `source_consultation_session_id`：关联咨询会话（自动创建时写入）
+  - `status`：例如 `DRAFT` / `ACTIVE` 等
+  - `matter_category`：诉讼/仲裁/非诉…（决定大方向与入口）
+  - `cause_of_action_code`：案由/争议类型字典码（建议对齐根目录 `law.md`）
+  - `service_type_id`：服务标签（产品/运营维度；用于 UI/路由提示，不应作为底层强绑定键）
+  - `file_ids`：事项关联材料文件
 - MatterTodo
-  - `todo_key`：语义幂等键（内部 upsert/完成按 key 或 id）
+  - `todo_key`：语义幂等键（upsert/完成按 key 或 id）
   - actor/review_type/payload/result：用于卡片/确认点
-- MatterAnalysisVersion、MatterPhaseProgress 等（用于分析结果与阶段状态）
+- MatterPhaseProgress
+  - `phase_id/phase_name/status/order_num`：阶段时间线（由系统/引擎写入）
 
 ## 对外 API（/api/v1）
 
@@ -43,7 +46,7 @@ matter-service 是“事项（Matter）”的真源服务，负责法律服务�
 
 - `GET/POST/PUT ... /api/v1/matters...`（事项 CRUD/列表）
 - `GET/POST ... /api/v1/matters/{id}/todos...`（待办查询/完成）
-- 管理端/律师端接口：以 controller 命名为准（例如 `LawyerMatterController`、`LawyerTodoController`）
+- 时间线/交付件：以 controller 命名为准（例如 phase timeline、deliverables）
 
 > 具体入参/返回以 OpenAPI 为准（见 `api/openapi.md`）。
 
@@ -55,13 +58,13 @@ matter-service 是“事项（Matter）”的真源服务，负责法律服务�
 
 该接口用于 consultations-service 在对话中确保绑定 matter：
 
-- 若用户类型为 lawyer/firm_admin，matter 会直接绑定承办律师/律所（对齐 legacy 逻辑）
+- 若用户类型为 lawyer/firm_admin，matter 会直接绑定承办律师/律所（对齐现有逻辑）
 - 会创建 intake 收集 todo；若 providerOrganizationId 存在但未绑定 lawyer，则创建派单 todo
 
-### 2) 工作流状态与同步
+### 2) 工作流 profile 与同步
 
 - `GET  /api/v1/internal/matters/{matterId}`（内部读取）
-- `GET  /api/v1/internal/matters/{matterId}/workflow/profile`（给 ai-engine/consultations 用的工作流 profile）
+- `GET  /api/v1/internal/matters/{matterId}/workflow/profile`（给 ai-engine 的白名单 profile）
 - `POST /api/v1/internal/matters/{matterId}/sync/all`（内部同步入口，供 ai-engine 写入状态/产物）
 
 ### 3) 结构化分析结果提交（internal）
@@ -75,22 +78,26 @@ matter-service 是“事项（Matter）”的真源服务，负责法律服务�
 - `POST /api/v1/internal/matters/{matterId}/issues/submit`
 - `POST /api/v1/internal/matters/{matterId}/strategies/submit`
 - `POST /api/v1/internal/matters/{matterId}/risk-assessment/submit`
-- `POST /api/v1/internal/matters/{matterId}/defense-strategy/submit`
-- `POST /api/v1/internal/matters/{matterId}/appeal-strategy/submit`
 
-## 与 platform-service 的关系（配置/Playbook）
+## 与 platform-service 的关系（配置）
 
-matter-service 的 ServiceType 与 Playbook 都来自 platform-service：
+matter-service 的“服务类型配置”来自 platform-service 的 SystemConfig：
 
-- ServiceType 配置 key：`matters.service_types`
-  - 由 collector-service 的 `matters_system_resources` seed 包写入 platform-service
-  - matter-service 通过 `PlatformServiceTypeRegistry` 拉取并缓存
-- PlaybookConfig：由 seed 包导入 platform-service
-  - matter-service 通过 `PlatformPlaybookRegistry` 拉取并缓存
+- 配置 key：`matters.service_types`
+- value：JSON（包含 `service_types` / `resolved_service_types`）
 
-这使得“新增服务类型/调整 playbook”无需改 matter-service 代码，仅需更新 seed/config。
+注意：当前 matter-service 会在对外/对内输出中 **主动移除历史字段 `playbook_id`**，避免把服务类型强绑定到 Playbook。
+
+## FlowBlueprint（流程蓝图，可选）
+
+matter-service 支持“流程蓝图（FlowBlueprint）”配置查询（主要面向管理端/调试）：
+
+- 加载来源：classpath `config/flow-blueprints/*.json`（可为空）
+- 典型用途：为前端/运营提供“流程/阶段的展示或提示”元信息
+
+> 说明：workbench-mode 的实际编排在 ai-engine LangGraph 中完成；FlowBlueprint 不作为运行时编排 DSL。
 
 ## 现状与边界
 
-- 已具备“咨询自动生成事项 + todo 初始化 + internal 同步/提交”骨架。
-- 阶段推进/门控规则依赖 ai-engine 的 playbook 校验与技能输出字段一致性（需要测试与回归保障）。
+- 已具备“咨询自动生成事项 + todo 初始化 + internal 同步/提交 + 时间线/交付件”骨架。
+- 流程编排在 ai-engine：goal/阶段/门禁以 LangGraph 子图表达；matter-service 只做真源承载与协同。
