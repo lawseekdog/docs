@@ -1,0 +1,369 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# LawSeekDog Delivery board helper for multi-repo Issue -> PR workflow.
+#
+# Requires:
+# - GitHub CLI: https://cli.github.com/
+# - Token scope: project (for GitHub Projects v2)
+
+PROJECT_OWNER_DEFAULT="lawseekdog"
+PROJECT_NUMBER_DEFAULT="1"
+AGENT_DEFAULT="Codex"
+
+die() {
+  printf "error: %s\n" "$*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'EOF'
+lsd-work: LawSeekDog Delivery workflow helper (GitHub Issues/PR + Projects)
+
+USAGE
+  lsd-work doctor
+  lsd-work claim <issue-url|owner/repo#num|repo#num|num> [--agent <Agent>] [--status <Status>] [--no-comment] [--sync-labels] [--dry-run]
+  lsd-work move  <issue-url|owner/repo#num|repo#num|num> --status <Status> [--sync-labels] [--dry-run]
+
+CONFIG (env vars)
+  LSD_PROJECT_OWNER   Project owner login (default: lawseekdog)
+  LSD_PROJECT_NUMBER  Project number (default: 1)
+  LSD_AGENT_DEFAULT   Default Agent single-select value (default: Codex)
+
+Status values (Project field: Status)
+  Triage | Ready | Claimed | In Progress | In Review | Blocked | Done
+
+Agent values (Project field: Agent)
+  Codex | Cursor | Claude | Copilot | Human
+
+EXAMPLES
+  ./tools/gh-delivery/lsd-work doctor
+  ./tools/gh-delivery/lsd-work claim https://github.com/lawseekdog/gateway-service/issues/123 --agent Codex
+  ./tools/gh-delivery/lsd-work move  lawseekdog/gateway-service#123 --status "In Review"
+
+NOTES
+  - Rule of thumb: 1 work item = 1 repo = 1 PR.
+  - This script updates the Projects board fields and (optionally) syncs status labels on the Issue.
+EOF
+}
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+project_owner() {
+  printf "%s" "${LSD_PROJECT_OWNER:-$PROJECT_OWNER_DEFAULT}"
+}
+
+project_number() {
+  printf "%s" "${LSD_PROJECT_NUMBER:-$PROJECT_NUMBER_DEFAULT}"
+}
+
+default_agent() {
+  printf "%s" "${LSD_AGENT_DEFAULT:-$AGENT_DEFAULT}"
+}
+
+gh_login() {
+  gh api user --jq '.login'
+}
+
+project_id() {
+  gh project view "$(project_number)" --owner "$(project_owner)" --format json --jq '.id'
+}
+
+field_id() {
+  local name="$1"
+  gh project field-list "$(project_number)" --owner "$(project_owner)" --format json \
+    --jq ".fields[] | select(.name==\"${name}\") | .id" | head -n 1
+}
+
+single_select_option_id() {
+  local field_name="$1"
+  local option_name="$2"
+  gh project field-list "$(project_number)" --owner "$(project_owner)" --format json \
+    --jq ".fields[] | select(.name==\"${field_name}\") | .options[] | select(.name==\"${option_name}\") | .id" \
+    | head -n 1
+}
+
+parse_issue_ref() {
+  # Output: owner repo number url
+  local ref="$1"
+
+  if [[ "$ref" =~ ^https?:// ]]; then
+    # Example: https://github.com/OWNER/REPO/issues/123
+    local owner repo number
+    owner="$(printf "%s" "$ref" | awk -F/ '{print $4}')"
+    repo="$(printf "%s" "$ref" | awk -F/ '{print $5}')"
+    number="$(printf "%s" "$ref" | awk -F/ '{print $7}')"
+    [[ -n "$owner" && -n "$repo" && "$number" =~ ^[0-9]+$ ]] || die "invalid issue URL: $ref"
+    printf "%s %s %s %s\n" "$owner" "$repo" "$number" "$ref"
+    return 0
+  fi
+
+  if [[ "$ref" =~ ^([^/]+)/([^#]+)#([0-9]+)$ ]]; then
+    local owner repo number url
+    owner="${BASH_REMATCH[1]}"
+    repo="${BASH_REMATCH[2]}"
+    number="${BASH_REMATCH[3]}"
+    url="$(gh issue view "$number" -R "$owner/$repo" --json url -q '.url')"
+    printf "%s %s %s %s\n" "$owner" "$repo" "$number" "$url"
+    return 0
+  fi
+
+  if [[ "$ref" =~ ^([^#]+)#([0-9]+)$ ]]; then
+    local owner repo number url
+    owner="$(project_owner)"
+    repo="${BASH_REMATCH[1]}"
+    number="${BASH_REMATCH[2]}"
+    url="$(gh issue view "$number" -R "$owner/$repo" --json url -q '.url')"
+    printf "%s %s %s %s\n" "$owner" "$repo" "$number" "$url"
+    return 0
+  fi
+
+  if [[ "$ref" =~ ^([0-9]+)$ ]]; then
+    local name_with_owner owner repo number url
+    number="$ref"
+    name_with_owner="$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null || true)"
+    [[ -n "$name_with_owner" ]] || die "issue number provided but cannot infer repo; use URL or owner/repo#num"
+    owner="${name_with_owner%/*}"
+    repo="${name_with_owner#*/}"
+    url="$(gh issue view "$number" -R "$owner/$repo" --json url -q '.url')"
+    printf "%s %s %s %s\n" "$owner" "$repo" "$number" "$url"
+    return 0
+  fi
+
+  die "unsupported issue reference: $ref"
+}
+
+ensure_project_item_id() {
+  local url="$1"
+  local dry_run="${2:-0}"
+  local item_id=""
+
+  # Fallback: locate existing item by url.
+  item_id="$(gh project item-list "$(project_number)" --owner "$(project_owner)" --limit 2000 --format json \
+    --jq ".items[] | select(.content.url==\"${url}\") | .id" | head -n 1 || true)"
+
+  if [[ -n "$item_id" ]]; then
+    printf "%s" "$item_id"
+    return 0
+  fi
+
+  if [[ "$dry_run" == "1" ]]; then
+    printf "DRY_RUN_NEW_ITEM"
+    return 0
+  fi
+
+  # Attempt add (returns item id in json).
+  item_id="$(gh project item-add "$(project_number)" --owner "$(project_owner)" --url "$url" --format json --jq '.id' 2>/dev/null || true)"
+  [[ -n "$item_id" ]] || die "could not add project item for: $url"
+  printf "%s" "$item_id"
+}
+
+set_item_single_select() {
+  local item_id="$1" field_name="$2" option_name="$3" dry_run="$4"
+  local pid fid oid
+
+  pid="$(project_id)"
+  fid="$(field_id "$field_name")"
+  oid="$(single_select_option_id "$field_name" "$option_name")"
+
+  [[ -n "$fid" ]] || die "project field not found: $field_name"
+  [[ -n "$oid" ]] || die "single-select option not found: ${field_name} -> ${option_name}"
+
+  if [[ "$dry_run" == "1" ]]; then
+    printf "[DRY RUN] set %s=%s on item %s\n" "$field_name" "$option_name" "$item_id" >&2
+    return 0
+  fi
+
+  gh project item-edit --id "$item_id" --project-id "$pid" --field-id "$fid" \
+    --single-select-option-id "$oid" >/dev/null
+}
+
+set_item_text() {
+  local item_id="$1" field_name="$2" value="$3" dry_run="$4"
+  local pid fid
+
+  pid="$(project_id)"
+  fid="$(field_id "$field_name")"
+  [[ -n "$fid" ]] || die "project field not found: $field_name"
+
+  if [[ "$dry_run" == "1" ]]; then
+    printf "[DRY RUN] set %s=%s on item %s\n" "$field_name" "$value" "$item_id" >&2
+    return 0
+  fi
+
+  gh project item-edit --id "$item_id" --project-id "$pid" --field-id "$fid" --text "$value" >/dev/null
+}
+
+sync_issue_status_labels() {
+  local issue_url="$1" status="$2" dry_run="$3"
+
+  local add=""
+  case "$status" in
+    Triage) add="status:needs-triage" ;;
+    Ready) add="status:ready" ;;
+    Claimed|In\ Progress) add="status:in-progress" ;;
+    In\ Review) add="status:needs-review" ;;
+    Blocked) add="status:blocked" ;;
+    Done) add="" ;;
+    *) return 0 ;;
+  esac
+
+  [[ -n "$add" ]] || return 0
+
+  if [[ "$dry_run" == "1" ]]; then
+    printf "[DRY RUN] add issue label: %s (%s)\n" "$add" "$issue_url" >&2
+    return 0
+  fi
+
+  gh issue edit "$issue_url" --add-label "$add" >/dev/null || true
+}
+
+doctor() {
+  require_cmd gh
+
+  printf "gh: %s\n" "$(gh --version | head -n 1)"
+  gh auth status >/dev/null 2>&1 || die "gh is not authenticated (run: gh auth login)"
+
+  local scopes
+  scopes="$(gh auth status 2>/dev/null | grep -E "Token scopes:" || true)"
+  printf "%s\n" "${scopes:-Token scopes: (not detected)}"
+
+  if ! gh auth status 2>/dev/null | grep -E "Token scopes:" | grep -qw "project"; then
+    die "missing 'project' scope (run: gh auth refresh -s project)"
+  fi
+
+  gh project view "$(project_number)" --owner "$(project_owner)" >/dev/null 2>&1 \
+    || die "cannot access project $(project_owner)/$(project_number)"
+
+  printf "OK: project=%s/%s\n" "$(project_owner)" "$(project_number)"
+}
+
+claim() {
+  local ref="${1:-}"
+  [[ -n "$ref" ]] || die "missing issue reference"
+  shift || true
+
+  local agent
+  agent="$(default_agent)"
+  local status="Claimed"
+  local no_comment=0
+  local sync_labels=0
+  local dry_run=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --agent)
+        agent="${2:-}"; shift 2 ;;
+      --status)
+        status="${2:-}"; shift 2 ;;
+      --no-comment)
+        no_comment=1; shift ;;
+      --sync-labels)
+        sync_labels=1; shift ;;
+      --dry-run)
+        dry_run=1; shift ;;
+      --project-owner)
+        LSD_PROJECT_OWNER="${2:-}"; shift 2 ;;
+      --project-number)
+        LSD_PROJECT_NUMBER="${2:-}"; shift 2 ;;
+      -h|--help)
+        usage; exit 0 ;;
+      *)
+        die "unknown flag: $1" ;;
+    esac
+  done
+
+  read -r owner repo number url < <(parse_issue_ref "$ref")
+
+  local item_id
+  item_id="$(ensure_project_item_id "$url" "$dry_run")"
+
+  # Update project fields (idempotent)
+  set_item_single_select "$item_id" "Status" "$status" "$dry_run"
+  set_item_single_select "$item_id" "Agent" "$agent" "$dry_run"
+  set_item_text "$item_id" "Target Repo" "$owner/$repo" "$dry_run"
+
+  if [[ "$dry_run" != "1" ]]; then
+    gh issue edit "$url" --add-assignee "@me" >/dev/null || true
+  else
+    printf "[DRY RUN] assign @me (%s)\n" "$url" >&2
+  fi
+
+  if [[ "$sync_labels" == "1" ]]; then
+    sync_issue_status_labels "$url" "$status" "$dry_run"
+  fi
+
+  if [[ "$no_comment" == "0" ]]; then
+    local me
+    me="$(gh_login)"
+    if [[ "$dry_run" != "1" ]]; then
+      gh issue comment "$url" --body "Claimed by @${me} (agent=${agent}). Project Status -> ${status}." >/dev/null || true
+    else
+      printf "[DRY RUN] comment: Claimed by @%s (agent=%s)\n" "$me" "$agent" >&2
+    fi
+  fi
+
+  printf "Claimed: %s\n" "$url"
+}
+
+move_status() {
+  local ref="${1:-}"
+  [[ -n "$ref" ]] || die "missing issue reference"
+  shift || true
+
+  local status=""
+  local sync_labels=0
+  local dry_run=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --status)
+        status="${2:-}"; shift 2 ;;
+      --sync-labels)
+        sync_labels=1; shift ;;
+      --dry-run)
+        dry_run=1; shift ;;
+      --project-owner)
+        LSD_PROJECT_OWNER="${2:-}"; shift 2 ;;
+      --project-number)
+        LSD_PROJECT_NUMBER="${2:-}"; shift 2 ;;
+      -h|--help)
+        usage; exit 0 ;;
+      *)
+        die "unknown flag: $1" ;;
+    esac
+  done
+
+  [[ -n "$status" ]] || die "missing --status"
+
+  read -r owner repo number url < <(parse_issue_ref "$ref")
+  local item_id
+  item_id="$(ensure_project_item_id "$url" "$dry_run")"
+
+  set_item_single_select "$item_id" "Status" "$status" "$dry_run"
+
+  if [[ "$sync_labels" == "1" ]]; then
+    sync_issue_status_labels "$url" "$status" "$dry_run"
+  fi
+
+  printf "Updated: %s (Status -> %s)\n" "$url" "$status"
+}
+
+main() {
+  require_cmd gh
+
+  local cmd="${1:-help}"
+  shift || true
+
+  case "$cmd" in
+    doctor) doctor ;;
+    claim) claim "$@" ;;
+    move) move_status "$@" ;;
+    -h|--help|help) usage ;;
+    *) usage; die "unknown command: $cmd" ;;
+  esac
+}
+
+main "$@"
