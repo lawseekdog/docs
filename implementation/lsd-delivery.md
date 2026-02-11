@@ -35,6 +35,14 @@ nav_order: 90
 
 不要在各仓库复制脚本/流程文档；统一以组织仓库 `lawseekdog/.github` 提供的 team skill 为准：
 
+前置（每台机器一次，确保 AI 可自动维护 Projects）：  
+
+```bash
+gh auth login
+gh auth refresh -s project,read:org,repo,workflow
+gh auth status
+```
+
 - 安装：`npx -y skills add lawseekdog/.github@lsd-delivery -g -y`
 - 验证：`~/.agents/skills/lsd-delivery/scripts/lsd-work doctor`
 - 完整可用命令：`~/.agents/skills/lsd-delivery/scripts/lsd-work --help`
@@ -89,3 +97,17 @@ gh issue develop <num> --checkout
 - 项目：LawSeekDog Delivery（Projects v2 #1）
 - 规则与字段以看板 Readme 为准（Status / Agent / Work Type / Priority / Target Repo / Epic 等）
 
+## 6) Skills 更新（每台机器）
+
+- 检查更新：`npx -y skills check -g`
+- 更新全部全局 skills：`npx -y skills update -g`
+- 只更新 lsd-delivery：`npx -y skills add lawseekdog/.github@lsd-delivery -g -y`
+- 更新后建议跑一次：`~/.agents/skills/lsd-delivery/scripts/lsd-work doctor`
+
+## 7) 配置（可选）
+
+环境变量（均为可选，默认值见括号）：
+
+- `LSD_PROJECT_OWNER`（`lawseekdog`）
+- `LSD_PROJECT_NUMBER`（`1`）
+- `LSD_AGENT_DEFAULT`（`Codex`）
