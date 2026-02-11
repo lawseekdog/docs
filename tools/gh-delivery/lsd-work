@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Deprecated wrapper: the source of truth for lsd-work lives in the org repo
+# `lawseekdog/.github` as the `lsd-delivery` skill.
+#
+# Install once per machine:
+#   npx -y skills add lawseekdog/.github@lsd-delivery -g -y
+#
+# Then use:
+#   ~/.agents/skills/lsd-delivery/scripts/lsd-work <command>
+
+TARGET="${HOME}/.agents/skills/lsd-delivery/scripts/lsd-work"
+
+if [[ -x "$TARGET" ]]; then
+  exec "$TARGET" "$@"
+fi
+
+cat >&2 <<MSG
+error: lsd-work has moved to the lsd-delivery skill.
+
+Install:
+  npx -y skills add lawseekdog/.github@lsd-delivery -g -y
+
+Run:
+  ~/.agents/skills/lsd-delivery/scripts/lsd-work doctor
+MSG
+
+exit 1
