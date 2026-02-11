@@ -12,4 +12,4 @@ has_children: true
 - [知识检索与 GraphRAG](./knowledge-rag.md)
 - [记忆服务（现状与规划）](./memory-extraction.md)
 - [Seed Packages（分发/导入/回归）](./seed-packages.md)
-
+- [GitHub Delivery（LSD Delivery）](./lsd-delivery.md)

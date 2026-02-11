@@ -1,8 +1,11 @@
 # gh-delivery
 
-Team helper scripts for the LawSeekDog multi-repo delivery workflow:
+Deprecated location for the LawSeekDog multi-repo delivery workflow helper.
 
-Issue (work item) -> PR -> GitHub Projects board.
+**Source of truth** lives in the org repo `lawseekdog/.github` as the `lsd-delivery` skill.
+
+This folder keeps a tiny wrapper (`./tools/gh-delivery/lsd-work`) for backwards compatibility,
+but it delegates to the installed skill script.
 
 ## Prereqs
 
@@ -17,20 +20,14 @@ gh auth status
 ## Quick start
 
 ```bash
-./tools/gh-delivery/lsd-work doctor
-./tools/gh-delivery/lsd-work claim lawseekdog/gateway-service#123 --agent Codex
-./tools/gh-delivery/lsd-work move  lawseekdog/gateway-service#123 --status "In Review"
+npx -y skills add lawseekdog/.github@lsd-delivery -g -y
+~/.agents/skills/lsd-delivery/scripts/lsd-work bootstrap
+~/.agents/skills/lsd-delivery/scripts/lsd-work doctor
 ```
 
-## What it does
+Docs:
 
-- Adds the Issue to the org Project (default: `lawseekdog` project `#1`)
-- Sets project fields:
-  - `Status` (e.g. `Claimed`, `In Review`)
-  - `Agent` (Codex/Cursor/Claude/Copilot/Human)
-  - `Target Repo` (e.g. `lawseekdog/gateway-service`)
-- Assigns the Issue to `@me` on `claim`
-- Optionally syncs a status label on the Issue (`--sync-labels`)
+- See `/implementation/lsd-delivery.md` in this docs site.
 
 ## Config
 
@@ -39,4 +36,3 @@ Environment variables:
 - `LSD_PROJECT_OWNER` (default: `lawseekdog`)
 - `LSD_PROJECT_NUMBER` (default: `1`)
 - `LSD_AGENT_DEFAULT` (default: `Codex`)
-
