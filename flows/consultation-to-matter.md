@@ -36,7 +36,7 @@ nav_order: 1
 
 - `POST /api/v1/internal/matters/from-consultation`
 - 关键字段：`session_id`、`user_id`、`organization_id`、`title`、`service_type_id`、`file_ids`
-- 默认 `service_type_id`：`legal_consultation`（若 session 未指定）
+- `service_type_id`：由 ai-engine 的预分类/路由结果决定（例如 `legal_opinion`；若置信度不足会要求澄清）
 
 创建成功后：
 
