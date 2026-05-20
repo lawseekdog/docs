@@ -18,7 +18,6 @@
 | Matter Service | 事项管理（案件全生命周期） | [设计文档](./modules/matter-service.md) |
 | Consultations Service | 咨询会话（实时对话、卡片交互） | [设计文档](./modules/consultations-service.md) |
 | Knowledge Service | 知识库（法规、案例、要素检索） | [设计文档](./modules/knowledge-service.md) |
-| Memory Service | 记忆服务（用户画像、事实提取） | [设计文档](./modules/memory-service.md) |
 | Auth Service | 认证授权（JWT、RBAC） | [设计文档](./modules/auth-service.md) |
 | User Service | 用户管理 | [设计文档](./modules/user-service.md) |
 | Organization Service | 组织/律所管理 | [设计文档](./modules/organization-service.md) |
@@ -41,7 +40,6 @@
 - [Workflow 路由与执行](./implementation/planner-engine.md)
 - [卡片交互机制](./implementation/card-interaction.md)
 - [知识检索 RAG](./implementation/knowledge-rag.md)
-- [记忆提取与召回](./implementation/memory-extraction.md)
 
 ### API 参考
 - [API 设计规范](./api/conventions.md)
@@ -61,7 +59,6 @@
 - **PostgreSQL** + Flyway 迁移
 - **Elasticsearch（可选）** keyword/vector/hybrid
 - **Neo4j（可选）** GraphRAG/关系图
-- **Rerank Service**（CrossEncoder + BM25）结果重排（可选）
 - **Redis** 缓存
 - **MinIO** 对象存储
 

@@ -89,7 +89,6 @@ NDJSON 单行格式：
 - consultations-service：对外 SSE；内部把对话请求转成 ai-engine 的 NDJSON 流并转发
 - matter-service：事项状态承载；ai-engine 在 skill/tool 中会读写 matter
 - knowledge-service：知识检索（atomic/GraphRAG）
-- memory-service：事实/记忆（当前抽取能力占位）
 - files-service：文件信息/解析（供技能读取材料）
 - platform-service：系统配置/字典/标签/feature flag 等（PlaybookConfig 属于历史兼容，逐步下线）
 

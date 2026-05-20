@@ -37,18 +37,12 @@ flowchart TD
   A[ai-engine skill] -->|internal HTTP| K[knowledge-service]
   K --> ES[(Elasticsearch 可选)]
   K --> N4[(Neo4j 可选)]
-  K -. optional .-> R[rerank-service]
   K --> A
 ```
 
-说明：具体检索策略（keyword/vector/hybrid、是否 rerank）以 knowledge-service 当前实现为准。
+说明：具体检索策略（keyword/vector/hybrid、是否内部重排）以 knowledge-service 当前实现为准。
 
-## 3) 记忆提取与召回（memory-service）
-
-- 召回：ai-engine 在合适时机调用 memory-service 返回相关事实/偏好
-- 抽取：可由 ai-engine 后台触发（以当前实现为准）
-
-## 4) 事项同步（sync_data → matter-service）
+## 3) 事项同步（sync_data → matter-service）
 
 ai-engine 每次执行 skill 后，都会在可中断点前执行 `sync_data`，把结构化产物与决策字段写回 matter-service：
 

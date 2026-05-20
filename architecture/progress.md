@@ -23,14 +23,13 @@ nav_order: 2
 待补齐（重点）：
 
 - 多仓库的“本地一键起全栈”编排尚未沉淀为独立仓库/统一入口（历史 mono-repo 阶段的 compose/部署脚本已逐步废弃；建议迁移到专用的 infra/compose 仓库）。
-- Python 微服务依赖 `shared-libs`（跨仓库私有依赖），CI 需要额外 checkout + Token（通常复用 `GH_PACKAGES_TOKEN`）。
+- 剩余 Python 微服务对 `shared-libs` 的依赖需要继续收敛，避免跨仓库私有依赖阻塞独立构建。
 
 ## 2) 运行时链路可用性（按关键路径）
 
 - 对话链路（Frontend → consultations-service SSE → ai-engine NDJSON）：骨架已具备（需结合环境配置验证）。
 - 事项链路（Matter/Todo/PhaseProgress + Workbench workflow）：matter-service 作为真源；ai-engine 以 LangGraph 工作流推进并同步产物。
 - 知识链路（knowledge-service）：已具备 Postgres 真源 + 可选 ES/Neo4j 的检索/GraphRAG 能力，且支持 seed 导入。
-- 记忆链路（memory-service）：以结构化存储为主；“抽取”能力目前处于占位/待完善状态（见 `implementation/memory-extraction.md`）。
 
 ## 3) 工程化与交付
 

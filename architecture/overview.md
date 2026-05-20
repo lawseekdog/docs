@@ -26,7 +26,6 @@ flowchart TB
   TPL -->|internal HTTP| AIE
 
   AIE -->|internal HTTP| KNOW[knowledge-service<br/>检索/GraphRAG]
-  AIE -->|internal HTTP| MEM[memory-service<br/>事实/记忆]
   AIE -->|internal HTTP| FILES
   AIE -->|internal HTTP| MAT
 
@@ -48,7 +47,6 @@ flowchart TB
 | 对象存储 | MinIO/S3 | 文件存储 |
 | 搜索 | Elasticsearch（可选） | keyword/vector/hybrid |
 | 图存储 | Neo4j（可选） | GraphRAG/关系图 |
-| 重排 | rerank-service（可选） | 检索结果重排（当启用时） |
 
 ### 前端
 

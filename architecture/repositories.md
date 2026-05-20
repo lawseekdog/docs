@@ -9,7 +9,7 @@ nav_order: 5
 本页用于回答两个问题：
 
 1) 现在的 LawSeekDog “完整项目组”由哪些仓库组成？
-2) 多仓库之间有哪些关键依赖/构建约束？（尤其是 Python 的 `shared-libs`）
+2) 多仓库之间有哪些关键依赖/构建约束？
 
 ## 当前仓库清单（以组织 lawseekdog 为准）
 
@@ -30,13 +30,11 @@ nav_order: 5
 | `consultations-service` | Java/Spring Boot | 运行时 | 对话会话 + SSE；对接 `ai-engine` 的 NDJSON 流 |
 | `matter-service` | Java/Spring Boot | 运行时 | 事项/待办/阶段推进；对接 `ai-engine` |
 | `knowledge-service` | Java/Spring Boot | 运行时 | 知识库：文档/Chunk、原子检索、GraphRAG（ES/Neo4j 可选） |
-| `memory-service` | Python/FastAPI | 运行时 | 记忆/事实（结构化存储与召回；抽取能力待完善） |
 | `files-service` | Java/Spring Boot | 运行时 | 文件元数据 + 对象存储适配（MinIO/S3） |
 | `templates-service` | Java/Spring Boot | 运行时 | 模板/文书生成（与 `ai-engine` 交互） |
 | `gateway-service` | Java/Spring Boot | 运行时（占位） | 当前更偏“样板/占位”，不等同于集群入口网关 |
 | `ai-engine` | Python/FastAPI | 运行时 | AI 执行引擎（LangGraph workbench、skills、NDJSON 事件流） |
 | `collector-service` | Python/FastAPI | 运行时 | Seed Packages（系统资源/字典/结构化种子）分发到各服务 |
-| `rerank-service` | Python/FastAPI | 运行时（可选） | 检索结果重排（CrossEncoder + BM25 fallback） |
 | `shared-libs` | Python package | 运行时依赖 | Python 侧通用库（contracts、clients、config/logging） |
 | `lawseekdog-seed-init` | Python CLI | 工具 | 调用 `collector-service` internal seed 接口的轻量 CLI |
 | `e2e-tests` | Python/pytest | 工具 | 端到端测试 |
@@ -49,7 +47,7 @@ nav_order: 5
 
 ### 1) Python 服务的独立构建约束：shared-libs（跨仓库依赖）
 
-`ai-engine` / `collector-service` / `memory-service` / `rerank-service` 依赖 `shared-libs`（独立仓库，私有）。
+剩余 Python 服务中仍有仓库依赖 `shared-libs`（独立仓库，私有），这类依赖需要继续收敛为服务内契约或 HTTP 边界。
 
 当前采用的工程化策略是：
 
@@ -59,7 +57,7 @@ nav_order: 5
 这意味着：
 
 - Java 微服务：已完成“多仓库独立构建与发布”（容器镜像仓库 + Helm；默认 GHCR，可切换到阿里云 ACR）。
-- Python 微服务：已可“多仓库独立构建与发布”，但需要为仓库配置可读 `shared-libs` 的 Token（通常复用 `GH_PACKAGES_TOKEN`）。
+- Python 微服务：应避免通过私有共享包传递运行时契约；独立构建优先依赖本服务代码、OpenAPI/HTTP 契约与显式生成物。
 
 ### 2) 文档漂移提示
 

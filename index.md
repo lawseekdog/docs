@@ -31,7 +31,6 @@ LawSeekDog 是一套「AI Agent 驱动的法律业务平台」的多仓库工程
   - [Workflow 路由与执行（Workbench）](./implementation/planner-engine.md)
   - [卡片交互机制（ask_user / resume）](./implementation/card-interaction.md)
   - [知识检索与 GraphRAG（当前实现与边界）](./implementation/knowledge-rag.md)
-  - [记忆服务（当前实现与规划）](./implementation/memory-extraction.md)
   - [Seed Packages（分发/导入/回归）](./implementation/seed-packages.md)
 - API 与规范
   - [API 约定（Google REST + 统一返回体）](./api/conventions.md)
@@ -71,7 +70,6 @@ flowchart TB
   TPL -->|internal HTTP| AIE
 
   AIE -->|internal HTTP| KNOW[knowledge-service<br/>原子检索/GraphRAG]
-  AIE -->|internal HTTP| MEM[memory-service<br/>事实/记忆]
   AIE -->|internal HTTP| FILES
   AIE -->|internal HTTP| MAT
   AIE -->|internal HTTP| PLAT

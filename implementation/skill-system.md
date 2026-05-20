@@ -152,7 +152,6 @@ flowchart TB
 - `matters__*`：事项读写（对接 matter-service）
 - `knowledge__*`：知识检索（对接 knowledge-service）
 - `element__*`：要素/案由相关的结构化能力（对接 knowledge-service internal element 工具）
-- `memory__*`：记忆与事实（对接 memory-service）
 
 每个技能可用哪些工具由 `skill.meta.json.tools` 显式声明。
 
