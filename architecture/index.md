@@ -10,6 +10,7 @@ has_children: true
 - [项目进度与现状](./progress.md)
 - [微服务拓扑与依赖](./microservices.md)
 - [数据流与协议](./data-flow.md)
+- [前台业务数据结构硬切方案](./front-office-schema-hardcut.md)
 - [仓库结构与拆分映射](./repositories.md)
 - [业务分类字典（law.md）](./law.md)
 - [Legal Agent 图谱参考（arch.md，草案）](./arch.md)
