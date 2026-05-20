@@ -119,7 +119,7 @@ Secrets：
   - 若你的 `GH_ORG_TOKEN` 同时具备 `read:packages`，也可复用它来拉取 GHCR
 - `INTERNAL_API_KEY`：创建 `lawseekdog-secrets`（让 `/api/v1/internal/**` 互调一致，必填）
 - `AI_BOOT_SECURITY_JWT_HMAC_SECRET`：Auth JWT HMAC secret（>=32 bytes，必填）
-- `SECRET_KEY`：shared-libs 兜底密钥（>=16 bytes，建议必填）
+- `INTERNAL_API_KEY`：服务间调用鉴权密钥（必填）
 - `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`：MinIO 根账号（必填）
 - `OPENROUTER_API_KEY` 或 `DEEPSEEK_API_KEY`：LLM 调用密钥（二选一必填）
 - （可选）`ONLYOFFICE_AI_API_KEY`、`ALIYUN_ACCESS_KEY_ID` / `ALIYUN_ACCESS_KEY_SECRET`、`TAVILY_API_KEY`、`NEO4J_URL` / `NEO4J_USER` / `NEO4J_PASSWORD`

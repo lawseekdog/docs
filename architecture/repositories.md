@@ -35,9 +35,7 @@ nav_order: 5
 | `gateway-service` | Java/Spring Boot | 运行时（占位） | 当前更偏“样板/占位”，不等同于集群入口网关 |
 | `ai-engine` | Python/FastAPI | 运行时 | AI 执行引擎（LangGraph workbench、skills、NDJSON 事件流） |
 | `collector-service` | Python/FastAPI | 运行时 | Seed Packages（系统资源/字典/结构化种子）分发到各服务 |
-| `shared-libs` | Python package | 运行时依赖 | Python 侧通用库（contracts、clients、config/logging） |
 | `lawseekdog-seed-init` | Python CLI | 工具 | 调用 `collector-service` internal seed 接口的轻量 CLI |
-| `e2e-tests` | Python/pytest | 工具 | 端到端测试 |
 | `docs` | Jekyll | 工程化 | 本文档站 |
 | `ai-boot-framework` | Java/Maven | 工程化 | 微服务脚手架（BOM/Starter/Archetype） |
 | `infra-templates` | GitHub Actions | 工程化 | 复用工作流（CI/CD） |
@@ -45,19 +43,12 @@ nav_order: 5
 
 ## 现状差异与迁移注意点（按“代码真实情况”）
 
-### 1) Python 服务的独立构建约束：shared-libs（跨仓库依赖）
-
-剩余 Python 服务中仍有仓库依赖 `shared-libs`（独立仓库，私有），这类依赖需要继续收敛为服务内契约或 HTTP 边界。
+### 1) 服务独立构建约束
 
 当前采用的工程化策略是：
 
-- Python 服务仓库使用 `infra-templates` 的复用工作流：`docker-service-ci.yml`
-- CI 会额外 checkout `lawseekdog/shared-libs` 到工作区根目录（`./shared-libs/`），Dockerfile 直接 `COPY shared-libs ...` 完成安装
-
-这意味着：
-
 - Java 微服务：已完成“多仓库独立构建与发布”（容器镜像仓库 + Helm；默认 GHCR，可切换到阿里云 ACR）。
-- Python 微服务：应避免通过私有共享包传递运行时契约；独立构建优先依赖本服务代码、OpenAPI/HTTP 契约与显式生成物。
+- Python 微服务：独立构建只依赖本服务代码、OpenAPI/HTTP 契约与显式生成物。
 
 ### 2) 文档漂移提示
 

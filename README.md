@@ -93,7 +93,6 @@ docs/
 | [consultations-service](https://github.com/lawseekdog/consultations-service) | 咨询会话服务 |
 | [knowledge-service](https://github.com/lawseekdog/knowledge-service) | 知识库服务 |
 | [frontend](https://github.com/lawseekdog/frontend) | 前端应用 |
-| [e2e-tests](https://github.com/lawseekdog/e2e-tests) | E2E 测试用例与脚本 |
 | ... | 其他服务 |
 
 ## 📝 贡献指南
