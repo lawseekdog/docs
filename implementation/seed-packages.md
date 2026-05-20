@@ -1,132 +1,46 @@
 ---
-title: Seed Packages
+title: Knowledge Seed Packages
 parent: 核心实现
 nav_order: 6
 ---
 
-# Seed Packages（collector-service）
+# Knowledge Seed Packages（knowledge-service）
 
-Seed Packages 是 LawSeekDog 的“系统资源分发机制”，用于把：
+Knowledge Seed Packages 是 LawSeekDog 知识服务的系统知识初始化机制，用于把：
 
-- 平台配置（service types、business categories、feature flags 等）
 - 知识结构化 seeds（要素/清单/系统 KB 文档）
 - 系统知识库资源（法条/案例/网页资料/规范等）
 
-以可审计、可回放的方式推送到各微服务的 `/api/v1/internal/**` 接口。
+以可审计、可回放的方式写入 `knowledge-service` 当前 canonical corpus。
 
 ## 1) 资源位置与目录结构
 
 seed packages 存放在：
 
-- `collector-service/resources/seed_packages/`
+- `knowledge-service/resources/seed_packages/`
 
 每个包一个目录：
 
 ```
-collector-service/resources/seed_packages/<package_id>/
+knowledge-service/resources/seed_packages/<package_id>/
   manifest.json
   data/...
-  scripts/...        # 可选
 ```
 
 示例包：
 
-- `knowledge_structured_seeds`：诉讼要素/非诉清单/系统 KB 文档清单
 - `knowledge_system_resources`：系统知识库基础资源（法条/案例/网页资料/规范）
 
-## 2) manifest.json 结构（schema_version=1）
+## 2) manifest.json 结构
 
-以 `knowledge_structured_seeds/manifest.json` 为例（摘录）：
+以 `knowledge_system_resources/manifest.json` 为准，manifest 描述包标识、版本、数据文件与入库约束。执行逻辑不由 `collector-service` 维护。
 
-```json
-{
-  "schema_version": 1,
-  "package_id": "knowledge_structured_seeds",
-  "name": "知识服务结构化种子（要件/检查项/系统检索增强文档）",
-  "version": "2026-01-25",
-  "items": [
-    {
-      "item_id": "structured_seed_import",
-      "kind": "knowledge.seed.structured.import",
-      "config": {
-        "litigation_elements_json": "${PACKAGE_DIR}/data/seed_litigation_elements.json",
-        "non_litigation_checklists_json": "${PACKAGE_DIR}/data/seed_non_litigation_checklists.json",
-        "sync_to_neo4j": true
-      }
-    }
-  ]
-}
-```
+## 3) 执行入口
 
-关键字段：
+当前唯一运维入口在 knowledge-service 内：
 
-- `package_id`：包唯一标识
-- `items[]`：执行项列表（可声明依赖顺序 `depends_on`）
-- `kind`：执行器类型（由 collector-service 的 executor 映射到具体动作）
-- `config`：执行器所需配置；支持 `${PACKAGE_DIR}` 占位符
+- `knowledge-service/tools/knowledge_seed/apply_seed_package.py`
+- `knowledge-service/tools/knowledge_seed/audit_seed_package.py`
+- `knowledge-service/tools/knowledge_seed/smoke_search_seed.py`
 
-## 3) 执行器（kind → internal API 调用）
-
-collector-service 的执行器会把 `kind` 映射为对目标服务的 internal API 调用。
-
-常见映射（示例）：
-
-- `platform.seed.system_configs.upsert`
-  - 调用 platform-service：写入 config key/value（用于 matters.service_types 等）
-- `knowledge.seed.structured.import`
-  - 调用 knowledge-service：`POST /api/v1/internal/seed/structured/import`
-- `knowledge.seed.system_kb_documents.import`
-  - 调用 knowledge-service：`POST /api/v1/internal/seed/system-kb-documents/import`
-
-说明：
-
-- manifest 的 `description` 可能仍包含历史实现措辞（例如“写入 Weaviate”），但执行器以 **当前 internal API** 为准。
-
-## 4) collector-service API（管理端/运维）
-
-collector-service 同时挂载在 `/api/v1` 与 `/internal`（方便对齐 Java 服务的协议/网关策略）。
-
-### 4.1 列出与查看 seed packages（internal api key）
-
-- `GET /api/v1/internal/seed-packages`
-- `GET /api/v1/internal/seed-packages/{package_id}/manifest`
-- `GET /api/v1/internal/seed-packages/{package_id}/download`（下载 zip）
-
-以上接口使用 `X-Internal-Api-Key` 鉴权。
-
-### 4.2 执行 seed packages
-
-两种方式：
-
-1) 需要登录权限（管理端入口）：
-   - `POST /api/v1/seed-packages/{package_id}/apply`
-
-2) 运维/CI 用（仅 internal api key）：
-   - `POST /api/v1/internal/seed-packages/apply-internal`
-
-请求体（示例）：
-
-```json
-{
-  "package_ids": ["knowledge_system_resources", "knowledge_structured_seeds"],
-  "dry_run": false,
-  "force": false
-}
-```
-
-### 4.3 启动时自动执行（env）
-
-collector-service 支持启动时自动执行种子包：
-
-- `SEED_PACKAGE_IDS_ON_STARTUP=...`（逗号分隔）
-- 或 `SEED_RESOURCES_ON_STARTUP=true` 使用默认包集合（dev 可容忍失败继续启动）
-
-## 5) seed-init CLI（lawseekdog-seed-init）
-
-`lawseekdog-seed-init` 是一个轻量 CLI，通过调用 collector-service 的 internal seed 接口完成：
-
-- list packages
-- view manifest
-- apply packages
-
-适合本地开发/运维脚本化。
+这些工具直接围绕 knowledge-service 的种子包、入库与检索质量工作；不通过独立初始化仓库，也不通过 collector-service 的 seed API。

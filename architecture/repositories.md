@@ -29,13 +29,12 @@ nav_order: 5
 | `platform-service` | Java/Spring Boot | 运行时 | 平台配置、SystemConfig、FeatureFlag、Tag 等（PlaybookConfig 为历史兼容） |
 | `consultations-service` | Java/Spring Boot | 运行时 | 对话会话 + SSE；对接 `ai-engine` 的 NDJSON 流 |
 | `matter-service` | Java/Spring Boot | 运行时 | 事项/待办/阶段推进；对接 `ai-engine` |
-| `knowledge-service` | Java/Spring Boot | 运行时 | 知识库：文档/Chunk、原子检索、GraphRAG（ES/Neo4j 可选） |
+| `knowledge-service` | Java/Spring Boot | 运行时 | 知识库：文档/Chunk、系统知识种子、原子检索、GraphRAG（ES/Neo4j 可选） |
 | `files-service` | Java/Spring Boot | 运行时 | 文件元数据 + 对象存储适配（MinIO/S3） |
 | `templates-service` | Java/Spring Boot | 运行时 | 模板/文书生成（与 `ai-engine` 交互） |
 | `gateway-service` | Java/Spring Boot | 运行时（占位） | 当前更偏“样板/占位”，不等同于集群入口网关 |
 | `ai-engine` | Python/FastAPI | 运行时 | AI 执行引擎（LangGraph workbench、skills、NDJSON 事件流） |
-| `collector-service` | Python/FastAPI | 运行时 | Seed Packages（系统资源/字典/结构化种子）分发到各服务 |
-| `lawseekdog-seed-init` | Python CLI | 工具 | 调用 `collector-service` internal seed 接口的轻量 CLI |
+| `collector-service` | Python/FastAPI | 运行时 | 资源采集与复核；不拥有 Seed Packages |
 | `docs` | Jekyll | 工程化 | 本文档站 |
 | `ai-boot-framework` | Java/Maven | 工程化 | 微服务脚手架（BOM/Starter/Archetype） |
 | `infra-templates` | GitHub Actions | 工程化 | 复用工作流（CI/CD） |
