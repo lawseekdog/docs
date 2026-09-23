@@ -40,14 +40,14 @@ Matter 的生命周期开放状态为 `draft -> provisional -> active`，终态�
 
 - 律所工作台：`frontend/src/apps/firm/firmRouter.tsx`，入口为 intake、engagement、documents、work、team 等经营路径。
 - 管理端：`frontend/src/apps/admin/adminRouter.tsx`，只负责平台管理和 DSH 观测，不承载律师业务写入。
-- DSH 业务入口：`ai-engine-v2/packages/legal-*` 的 typed Tool。自然语言请求先读取 Owner Context；只读请求直接返回 typed result；写请求先形成完整影响并走官方 Approval，再调用 Owner。
+- DSH 业务入口：`ai-engine-v2/packages/legal-*` 的 typed Tool。自然语言请求先读取 Owner Context；只读请求直接返回 typed result；已有明确对象与用户工作范围内的普通内容保存无需逐次审批；创建对象、变更归属或正式范围、律师采纳／复核／完成决定和程序／期限动作，先形成完整影响并走官方 Approval。两类写入都由 Owner 鉴权并校验精确对象、版本和幂等。
 - Matter 内部 API：`matter-service/src/main/java/com/lawseekdog/matter/api/controller`，只接受内部服务或律师端授权请求，不接受前端自行构造的业务 mutation。
 
 ## Session 与业务边界
 
 Session 可以保存 `business reference`、当前 focus、来源材料和导航信息，但这些只是当前会话的引用选择。Matter、Case、Engagement、Document 和 Task 的长期关系与状态必须保存在各自 Owner 数据库中。Owner 不应以 `origin_session_id` 或 `origin_tool_call_id` 作为业务状态来源。
 
-合法写入链是：
+需审批操作的合法写入链是：
 
 ```text
 用户意图 -> Tool 读取 Owner Context -> 精确 mutation proposal
