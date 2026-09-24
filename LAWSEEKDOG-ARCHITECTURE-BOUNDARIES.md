@@ -42,6 +42,8 @@ Matter 的开放状态包括 `draft`、`provisional`、`active`；它们并非�
 
 事项创建统一由 matter-service 落库，但入口编排分工明确：legal-matter 负责普通工作初始化，legal-case 负责建案及程序初始化所需的分析事项，legal-engagement 负责正式承接及新签阶段委托所需的代理事项。文书、证据、检索、诉讼分析等专业成果插件不创建事项。一次确认覆盖跨 Owner 动作不代表一笔跨服务事务；必须呈现真实部分完成和剩余动作，不能因材料归入失败再建一份事项。
 
+当前 legal-matter 通过 legal-engagement 公开的 matter-creation 模块复用委托范围读取、授权校验及 Owner 请求适配，因此存在显式包级依赖；它不调用另一个 Tool 的 execute，也不要求安装该插件的运行实例。文书事件的读取也存在公开契约依赖。业务职责清晰不等于包之间没有代码依赖，不能用文档掩盖这些真实耦合。
+
 - 律所工作台：`frontend/src/apps/firm/firmRouter.tsx`，入口为 intake、engagement、documents、work、team 等经营路径。
 - 管理端：`frontend/src/apps/admin/adminRouter.tsx`，只负责平台管理和 DSH 观测，不承载律师业务写入。
 - DSH 业务入口：`ai-engine-v2/packages/legal-*` 的 typed Tool。自然语言请求先读取 Owner Context；只读请求直接返回 typed result；已有明确对象与用户工作范围内的普通内容保存无需逐次审批；初始化办理主对象、变更归属或正式范围、律师采纳／复核／完成决定和程序／期限动作，先形成完整影响并走官方 Approval。两类写入都由 Owner 鉴权并校验精确对象、版本和幂等。
