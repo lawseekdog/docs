@@ -13,7 +13,7 @@ LawSeekDog 是面向律师工作的多仓库法律业务平台。当前运行时
 flowchart LR
   FE[React Frontend / Xiaojian] --> DSH[官方 DSH Web Surface]
   DSH --> A[ai-engine-v2 DSH profile]
-  A --> P[26 个法律插件]
+  A --> P[法律插件]
   P --> O[Owner API]
   O --> DB[(Owner PostgreSQL)]
   A --> E[DSH SessionEvent]

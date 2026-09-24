@@ -1,44 +1,23 @@
+---
+title: 微服务拓扑与依赖
+parent: 架构
+nav_order: 3
+---
+
 # 微服务拓扑与依赖
-
-本页以“当前多仓库工程组”为准，给出核心服务拓扑与依赖关系（细节以各仓库 README/OpenAPI 为准）。
-
-## 1) 关键拓扑（简化）
 
 ```mermaid
 flowchart TB
-  FE[frontend (Vue3)] -->|REST + SSE| CONS[consultations-service]
-  FE -->|REST| MAT[matter-service]
-  FE -->|REST| TPL[templates-service]
-  FE -->|REST| FILES[files-service]
-  FE -->|REST| AUTH[auth-service]
-  FE -->|REST| USER[user-service]
-  FE -->|REST| ORG[organization-service]
-  FE -->|REST| PLAT[platform-service]
-
-  CONS -->|NDJSON| AIE[ai-engine]
-  MAT -->|internal| AIE
-  TPL -->|internal| AIE
-
-  AIE -->|internal| KNOW[knowledge-service]
-  AIE -->|internal| FILES
-  AIE -->|internal| MAT
-
-  COL[collector-service] -->|internal seed| PLAT
-  COL -->|internal seed| KNOW
-  COL -->|internal seed| TPL
+  F[Frontend] --> D[官方 DSH Surface / profile]
+  F --> R[律师端 Owner 只读 API]
+  D --> L[法律插件 Tools]
+  L --> M[Matter / Case / Firm Owners]
+  L --> W[DWS / Templates / Files Owners]
+  L --> K[知识与检索来源]
 ```
 
-## 2) 服务清单（摘要）
+每个 Owner 在自己的事务内鉴权并校验精确身份、版本和幂等。插件只使用受保护的 typed API；跨 Owner 调用不是分布式原子事务。职责表见[架构边界](../LAWSEEKDOG-ARCHITECTURE-BOUNDARIES.md)，不在此重复维护第二份 Owner 清单。
 
-| 服务/仓库 | 技术栈 | 职责 |
-|---|---|---|
-| `consultations-service` | Java/Spring Boot | 会话/SSE/卡片；转发 ai-engine NDJSON |
-| `matter-service` | Java/Spring Boot | 事项/待办/阶段进度/交付件；internal 同步 |
-| `ai-engine` | Python/FastAPI/LangGraph | workbench 工作流编排 + skills 执行 + checkpoint/trace |
-| `knowledge-service` | Java/Spring Boot | 知识检索/GraphRAG（可选 ES/Neo4j） |
-| `files-service` | Java/Spring Boot | 文件元数据 + 对象存储适配 |
-| `templates-service` | Java/Spring Boot | 模板/文书生成（与 ai-engine 协作） |
-| `platform-service` | Java/Spring Boot | 配置/字典/标签/feature flags（PlaybookConfig 为历史兼容） |
-| `collector-service` | Python/FastAPI | seed packages 分发与导入 |
+部署拓扑与可用服务集合从 `infra-live/deploy/runtime-topology.v5.json` 和 `scripts/runtime_topology_contract.py` 读取。远端 runtime 为 `remote-cluster`，腾讯云与阿里云是分别选择的部署目标；目标域名、地址和私有配置不能从旧文档猜测。本地调试仅使用 topology 允许的服务及 lease-aware 生命周期脚本。
 
-> 其它基础域服务（auth/user/org/billing/notification 等）见 `architecture/repositories.md`。
+本图是调用职责示意，不是已部署 Pod 清单或健康报告；现场状态须按该次发布的精确目标和提交读回。

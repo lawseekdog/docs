@@ -4,6 +4,8 @@ parent: 架构
 nav_order: 6
 ---
 
+> 本页是业务分类候选资料，不是现行事项类型、授权范围或 Platform catalog 的定义。采用任何编码或法律分类前核对当前 Owner/Platform 契约与适用依据；Case 与 Matter 不是同一对象。
+
 # 法律业务系统分类体系
 
   ## 0. 使用目标与落库规范（MVP）

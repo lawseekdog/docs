@@ -1,101 +1,36 @@
-# 数据流架构
+---
+title: 数据流与协议
+parent: 架构
+nav_order: 4
+---
 
-本页描述几条核心链路的数据流转方式（以 workbench-mode 为准）。
+# 数据流与协议
 
-## 1) 咨询对话（SSE ↔ NDJSON）
+## 从工作入口到 Owner
 
-- 对前端：SSE（`text/event-stream`）
-- 对 ai-engine：NDJSON（`application/x-ndjson`）
+1. 律师从业务入口说明工作范围，DSH Session 保留材料、已答事实和讨论；打开页面、选择模板或上传材料不创建业务主对象。
+2. 初始化 Tool 读取当前 Owner 事实，按入口提供精确影响，通过原生 Approval 创建相应主对象并认领材料。普通咨询默认只读，明确要求保存才初始化；已有 Matter 的续办核对真实关联后沿用原 Session。
+3. 专业 Tool 准备成果。在已获明确工作范围和精确对象内，主智能体调用普通保存 Tool，Owner 回执证明保存成功；这不是消息事件自动触发的后台写入。
+4. 采纳、复核、完成、发布、交付等律师决定另走其原生 Approval 与 Owner 生命周期。
 
-```mermaid
-sequenceDiagram
-  participant FE as Frontend
-  participant CONS as consultations-service
-  participant MAT as matter-service
-  participant AIE as ai-engine
+初始化编排、自动保存适用边界与授权条件仅由[架构边界](../LAWSEEKDOG-ARCHITECTURE-BOUNDARIES.md)和共享规范定义。Question 解决缺失事实，不代替 Approval。
 
-  FE->>CONS: POST /chat (SSE)
-  CONS->>CONS: 落库消息/附件
-  alt session 未绑定 matter
-    CONS->>MAT: POST /api/v1/internal/matters/from-consultation
-    MAT-->>CONS: matter_id
-  end
-  CONS->>AIE: POST /api/v1/internal/ai/agent/execute/stream (NDJSON)
-  AIE-->>CONS: token/progress/card/result/end
-  CONS-->>FE: delta/card/end
-```
+## 准备稿、已保存成果与文书
 
-卡片中断：
+| 数据 | 真相与消费方式 |
+| --- | --- |
+| 尚未保存的专业准备稿 | 原 DSH Session 中的精确 producer / Tool 身份；不能靠 hash 或“最新一条”跨 Session 猜选 |
+| 已保存分项成果 | Matter Owner 的 ref、内容 hash、版本与来源；跨 Session 读取仍须核对权限、范围和原材料身份 |
+| 综合分析 | 引用分项成果的精确已保存版本；新生成时核对当前依赖，不复制准备稿副本 |
+| 文书草稿及内容版本 | 只保存在 DWS；typed section stream 是预览，Matter 保存交付绑定 |
+| 复核 | 绑定其当时精确成果版本；旧复核可显示为历史，不能证明当前内容已通过 |
 
-- ai-engine 产出 `event=card` 后结束本轮流
-- 前端提交答案走 `/resume`，consultations-service 转发到 ai-engine 的 resume 流
+分项成果变更后，Owner 判断旧综合分析的复核资格并返回过期/未知原因，前端展示该事实。不能因为综合分析自己的 revision 未变就沿用旧复核，也不能自动重算或代替律师复核。DWS 同样要求复核版本与当前文书版本匹配。
 
-## 2) 知识检索（skill/tool → knowledge-service）
+## 失败与验收
 
-```mermaid
-flowchart TD
-  A[ai-engine skill] -->|internal HTTP| K[knowledge-service]
-  K --> ES[(Elasticsearch 可选)]
-  K --> N4[(Neo4j 可选)]
-  K --> A
-```
+跨 Owner 初始化中，前序提交可能已成功而后续失败。保留真实 request/result/readback，说明已建立对象和未完成操作；续办复用真实身份和幂等结果，不能再建一份或宣称整体回滚。OCC 冲突、权限不足、来源缺失均应作为明确失败，不由 UI 修补。
 
-说明：具体检索策略（keyword/vector/hybrid、是否内部重排）以 knowledge-service 当前实现为准。
+Owner 响应允许新增无关字段、缺少非关键展示信息；关键身份、权限、版本、来源、hash 和法律写入值仍须准确。保存内容的 hash 以原始 payload 核验。Schema 通过只证明结构，引用有效只证明定位，法律结论仍须核对原文支持、适用条件与反方观点。
 
-## 3) 事项同步（sync_data → matter-service）
-
-ai-engine 每次执行 skill 后，都会在可中断点前执行 `sync_data`，把结构化产物与决策字段写回 matter-service：
-
-```mermaid
-flowchart TD
-  S[run_skill 输出] --> SYNC[sync_data]
-  SYNC -->|internal HTTP| MAT[matter-service]
-  MAT --> P[(PostgreSQL)]
-```
-
-## 状态存储（建议视角）
-
-### Session（consultations-service）
-
-会话侧主要存“消息/附件/会话元信息 + matter_id 绑定”，示例：
-
-```json
-{
-  "session_id": "123",
-  "matter_id": "456",
-  "user_id": 1001,
-  "tenant_id": "org_x",
-  "service_type_id": "civil_prosecution",
-  "messages": ["..."],
-  "attachments": ["..."]
-}
-```
-
-### Matter（matter-service）
-
-事项侧是真源，存“业务分类 + 结构化产物 + 待办/阶段/交付件”，示例：
-
-```json
-{
-  "matter_id": "456",
-  "matter_category": "litigation",
-  "cause_of_action_code": "CIV.CAUSE.CONTRACT.SALE",
-  "service_type_id": "civil_prosecution",
-  "profile": {"summary": "..."},
-  "data": {
-    "workbench": {"goal": "case_analysis"},
-    "litigation": {"issues": [], "strategies": []},
-    "work_product": {"analysis_report": {"format": "markdown", "content": "..."}}
-  }
-}
-```
-
-### Agent checkpoint（ai-engine）
-
-ai-engine 使用 LangGraph checkpointer 在 Postgres 存储 thread state（用于中断恢复与回放）；`thread_id` 通常与 session 绑定并做 namespace 隔离。
-
-## 一致性与幂等（原则）
-
-- ai-engine 是结构化产物的“生产者”，matter-service 是“真源持久化层”。
-- 同步接口建议幂等（按 todo_key / deliverable_key 等做 upsert），避免重复写入。
-- 路由应幂等：下一步只由当前 state 决定（workbench router）。
+验收分别记录 DSH 执行证据、Owner 持久化读回、UI 展示及法律内容判断。不存在统一 `sync_data`、会话自动创建 Matter 或从聊天推导生命周期的现行链路。

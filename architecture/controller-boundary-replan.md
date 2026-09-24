@@ -1,3 +1,6 @@
+
+
+> **历史设计，不是当前实现规范。** 下文保留当时方案用于追溯，其中运行时、Owner、路由或表结构已过时；不得按其恢复旧实现。当前职责见[架构边界](../LAWSEEKDOG-ARCHITECTURE-BOUNDARIES.md)，精确 API 以 Owner 源码与契约为准。
 # Controller Boundary Replan
 
 This is the hard-cut replacement plan for the removed controller layer in

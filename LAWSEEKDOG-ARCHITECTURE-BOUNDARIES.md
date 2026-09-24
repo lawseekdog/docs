@@ -40,9 +40,11 @@ Matter 的生命周期开放状态为 `draft -> provisional -> active`，终态�
 
 讨论阶段的工作记录就是 Session，不新增工作记录表。Matter 表达律师真实工作范围，文书只是交付物；律师函、法律意见书和合同是 legal-document 支持的文书种类，不是独立事项类型或插件。已有案件或合同事项中的文书不因插件或文书数量另建事项，DWS 是文书草稿与版本的唯一记录，Matter 只保留交付绑定。`legal-matter` 是内部工具能力，不是新的页面入口。客户、Case、Engagement 依据实际关系关联；首页独立工作不强制委托，客户页“新建工作”则必须选择该客户的有效委托并核验范围。文种不等于代理处分，DWS 定稿不等于签章或对外提交。
 
+事项创建统一由 matter-service 落库，但入口编排分工明确：legal-matter 负责普通工作初始化，legal-case 负责建案及程序初始化所需的分析事项，legal-engagement 负责正式承接及新签阶段委托所需的代理事项。文书、证据、检索、诉讼分析等专业成果插件不创建事项。一次确认覆盖跨 Owner 动作不代表一笔跨服务事务；必须呈现真实部分完成和剩余动作，不能因材料归入失败再建一份事项。
+
 - 律所工作台：`frontend/src/apps/firm/firmRouter.tsx`，入口为 intake、engagement、documents、work、team 等经营路径。
 - 管理端：`frontend/src/apps/admin/adminRouter.tsx`，只负责平台管理和 DSH 观测，不承载律师业务写入。
-- DSH 业务入口：`ai-engine-v2/packages/legal-*` 的 typed Tool。自然语言请求先读取 Owner Context；只读请求直接返回 typed result；已有明确对象与用户工作范围内的普通内容保存无需逐次审批；创建对象、变更归属或正式范围、律师采纳／复核／完成决定和程序／期限动作，先形成完整影响并走官方 Approval。两类写入都由 Owner 鉴权并校验精确对象、版本和幂等。
+- DSH 业务入口：`ai-engine-v2/packages/legal-*` 的 typed Tool。自然语言请求先读取 Owner Context；只读请求直接返回 typed result；已有明确对象与用户工作范围内的普通内容保存无需逐次审批；初始化办理主对象、变更归属或正式范围、律师采纳／复核／完成决定和程序／期限动作，先形成完整影响并走官方 Approval。两类写入都由 Owner 鉴权并校验精确对象、版本和幂等。
 - Matter 内部 API：`matter-service/src/main/java/com/lawseekdog/matter/api/controller`，只接受内部服务或律师端授权请求，不接受前端自行构造的业务 mutation。
 
 ## Session 与业务边界
@@ -59,13 +61,19 @@ Session 可以保存 `business reference`、当前 focus、来源材料和导航
 
 禁止从聊天正文、Session 状态、前端卡片或“最新一条”投影推断业务状态。
 
-## 过期代码结论
+## 成果、字段与版本读取
 
-`ai-engine-v2/src/runtime` 当前只包含 Python `__pycache__/*.pyc` 产物；活跃源码入口在 `packages/host`、`packages/xiaojian` 和 `packages/legal-*`。旧 Run、WorkUnit、Attempt、pending-card、retry-phase、northbound Run API 等路径不得恢复。
+Session 准备稿仅由其原 Session 的精确 producer 身份消费；已保存成果由 Matter Owner 提供精确 ref/hash/revision，跨 Session 读取还需核验原范围和材料。保存不等于复核、采纳或完成。“自动保存”仍由主智能体调用保存 Tool 并取得真实回执，不是事件触发的后台保证。
+
+分项成果更新后，旧综合分析和旧复核仍可作为历史读取；由 Owner 判断它们能否支持当前复核资格，前端呈现过期或来源未知原因。DWS 复核同样只绑定其文书版本。不得把“最新保存”“当前适用”和“曾复核”混成一个状态，也不自动替律师重算或批准。
+
+消费响应允许新增无关字段、缺少非关键展示信息；身份、权限、来源、版本、hash 与实际法律写入值仍严格。读取已保存 payload 时保留其原始 hash 语义，不按新结构补造历史字段。字段存在和引用有效都不证明法律事实成立，仍须核对原文、适用条件、推断与待核实项。
+
+实现审查定位：AI 的入口工具呈现与保存执行路径；Matter 的 dependency/preparation/history/review application services；DWS 的 revision/review/publication services；前端业务入口、精确成果读取与复核版本展示。文档要求不是已上线通过的证明，实际路由互斥、自动保存和真实读回须在该次发布中验证。
 
 ## 技能使用基线
 
-1. 首先读取 `workspace-guidance`，再读取目标服务的 `AGENTS.md`。
+1. 先用 `workspace-guidance/TASK-ROUTING.md` 选择相关规范和目标服务 `AGENTS.md`，无需每次全读。
 2. 单次 DSH/Owner 故障使用 `lawseekdog-ai-run-quality-audit`。
 3. 生产模型矩阵使用 `lawseekdog-llm-live-quality-gate`。
 4. 发布级全链路验收使用 `lawseekdog-xiaojian-stability-gate`。

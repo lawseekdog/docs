@@ -1,63 +1,23 @@
+---
+title: 系统架构概览
+parent: 架构
+nav_order: 2
+---
+
 # 系统架构概览
 
-LawSeekDog 是一个智能法律服务平台，采用微服务架构；核心“流程编排”由 `ai-engine` 的 LangGraph workbench 工作流驱动，支持法律咨询、事项管理、文书生成等链路。
-
-## 整体架构（概览）
-
 ```mermaid
-flowchart TB
-  U[用户/客户] --> FE[Frontend: Vue3 多端]
-  L[律师/经办人] --> FE
-  A[运营/管理员] --> FE
-
-  FE -->|REST + SSE| CONS[consultations-service<br/>对话/SSE/卡片]
-  FE -->|REST| MAT[matter-service<br/>事项/待办/阶段]
-  FE -->|REST| TPL[templates-service<br/>模板/文书]
-  FE -->|REST| FILES[files-service<br/>文件/对象存储]
-  FE -->|REST| USER[user-service]
-  FE -->|REST| ORG[organization-service]
-  FE -->|REST| AUTH[auth-service]
-  FE -->|REST| BILL[billing-service]
-  FE -->|REST| NOTIF[notification-service]
-  FE -->|REST| PLAT[platform-service<br/>配置/字典/FeatureFlags]
-
-  CONS -->|NDJSON stream| AIE[ai-engine<br/>LangGraph workbench + skills]
-  MAT -->|internal HTTP| AIE
-  TPL -->|internal HTTP| AIE
-
-  AIE -->|internal HTTP| KNOW[knowledge-service<br/>检索/GraphRAG]
-  AIE -->|internal HTTP| FILES
-  AIE -->|internal HTTP| MAT
-
-  COL[collector-service<br/>seed packages 分发] -->|internal HTTP| PLAT
-  COL -->|internal HTTP| KNOW
-  COL -->|internal HTTP| TPL
+flowchart LR
+  F[React 前端与小简] --> D[官方 DSH Conversation Surface]
+  D --> P[DSH production profile]
+  P --> L[法律插件 Typed Tool]
+  L --> O[Business Owner API]
+  O --> DB[(Owner 数据库)]
+  P --> E[官方 SessionEvent]
 ```
 
-## 技术选型（摘要）
+`ai-engine-v2` 承载该 profile 及插件。Host 验证身份、组织、来源并接入 DSH；Xiaojian 呈现会话、typed 卡片、上传入口和业务链接。二者均不代理法律领域请求或持有业务生命周期。专业页面从 Owner 读取业务结果，不能把聊天完成、流式预览或绿卡片当作落库证据。
 
-### 后端服务
+业务工作按“入口 → Matter → 成果 → 律师决定”区分。Matter 是工作归属，Case/Proceeding 是案件程序轴，DSH Session 是讨论与执行记录，DWS 是文书草稿和版本单一来源；这些身份与状态不能互相替代。具体 Owner 和三类初始化编排见[架构边界](../LAWSEEKDOG-ARCHITECTURE-BOUNDARIES.md)。
 
-| 组件 | 技术栈 | 说明 |
-|------|--------|------|
-| Java 服务 | Spring Boot 3.x + JDK 21 | 业务服务主体（DDD 分层） |
-| AI 引擎 | Python + FastAPI + LangGraph | workbench 工作流、skills、NDJSON 事件流 |
-| 数据库 | PostgreSQL | 业务数据与 AI checkpoint/trace |
-| 缓存/队列 | Redis | 缓存/异步（以当前实现为准） |
-| 对象存储 | MinIO/S3 | 文件存储 |
-| 搜索 | Elasticsearch（可选） | keyword/vector/hybrid |
-| 图存储 | Neo4j（可选） | GraphRAG/关系图 |
-
-### 前端
-
-| 组件 | 技术栈 |
-|------|--------|
-| 框架 | Vue3 + TypeScript |
-| 构建 | Vite |
-
-## 核心设计原则
-
-- **工作流在 LangGraph**：目标选择、阶段门禁、交付门禁都在 graph/subgraph 表达（playbook-free）。
-- **单一统一状态**：统一 `state`（profile/data）+ 白名单校验 + checkpoint，便于回放与审计。
-- **确定性优先**：路由/门禁尽量确定性；LLM 主要用于“取材/生成/改写”。
-- **人机协同可中断**：关键确认点统一通过卡片（ask_user）中断，`resume` 可继续。
+旧 LangGraph workbench、consultations-service 转发链、Run ledger 和 pending-card 不是当前架构。历史页面中的表结构、路由和门禁不得作为新增实现依据。

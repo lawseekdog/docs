@@ -1,59 +1,21 @@
 ---
-title: 仓库结构与拆分映射
+title: 仓库与维护职责
 parent: 架构
 nav_order: 5
 ---
 
-# 仓库结构与拆分映射
+# 仓库与维护职责
 
-本页用于回答两个问题：
+| 分组 | 仓库 | 维护内容 |
+| --- | --- | --- |
+| 用户界面 | `frontend` | React/TypeScript 律师、律所、管理端及 Xiaojian 嵌入 |
+| Agent 与专业能力 | `ai-engine-v2` | 官方 DSH profile、Host、Xiaojian、法律与社区插件、契约/eval |
+| 业务 Owner | `firm-service`、`case-service`、`matter-service`、`document-workspace-service` | 委托、案件程序、事项成果任务、文书生命周期 |
+| 来源与渲染 | `files-service`、`templates-service`、`platform-service`、`knowledge-service`、`collector-service` | 文件版本、模板渲染、目录与规则、知识素材与采集 |
+| 身份与支持域 | `user-service`、`lawyer-profile-service`、`auth-service`、`billing-service`、`notification-service` | 各自领域，以服务契约为准 |
+| 工程 | `ai-boot-framework`、`infra-templates`、`infra-live` | Java 构建基线、CI 资源、拓扑与发布 |
+| 文档与开发技能 | `docs`、`lawseekdog-agent-skills`、`lawseekdog-codex-plugins` | 项目事实、共享规范与技能、开发插件 |
 
-1) 现在的 LawSeekDog “完整项目组”由哪些仓库组成？
-2) 多仓库之间有哪些关键依赖/构建约束？
+这是维护导航，不是启用服务清单。实际部署对象由 infra topology 和该次 release scope 决定；目录存在不能证明活跃。`organization-service`、`assistant-service`、`memory-service`、`shared-libs` 不应恢复为当前依赖。
 
-## 当前仓库清单（以组织 lawseekdog 为准）
-
-说明：
-
-- “运行时”指会被部署到 K8s 集群的服务/应用（或其依赖的基础设施适配）。
-- “工程化”指脚手架、CI 模板、文档等不会直接承载业务流量的仓库。
-
-| 仓库 | 语言/形态 | 角色 | 备注 |
-|------|----------|------|------|
-| `frontend` | Node/Vue3 | 运行时 | 多端前端（admin/lawyer/firm） |
-| `auth-service` | Java/Spring Boot | 运行时 | 登录/鉴权/RBAC（对外 `/api/**`；内部 `/api/v1/internal/**`） |
-| `user-service` | Java/Spring Boot | 运行时 | 用户/画像（业务域用户） |
-| `organization-service` | Java/Spring Boot | 运行时 | 组织/律所/成员 |
-| `billing-service` | Java/Spring Boot | 运行时 | 订阅/用量/额度（MVP 形态） |
-| `notification-service` | Java/Spring Boot | 运行时 | 通知（MVP 形态） |
-| `platform-service` | Java/Spring Boot | 运行时 | 平台配置、SystemConfig、FeatureFlag、Tag 等（PlaybookConfig 为历史兼容） |
-| `consultations-service` | Java/Spring Boot | 运行时 | 对话会话 + SSE；对接 `ai-engine` 的 NDJSON 流 |
-| `matter-service` | Java/Spring Boot | 运行时 | 事项/待办/阶段推进；对接 `ai-engine` |
-| `knowledge-service` | Java/Spring Boot | 运行时 | 知识库：文档/Chunk、系统知识种子、原子检索、GraphRAG（ES/Neo4j 可选） |
-| `files-service` | Java/Spring Boot | 运行时 | 文件元数据 + 对象存储适配（MinIO/S3） |
-| `templates-service` | Java/Spring Boot | 运行时 | 模板/文书生成（与 `ai-engine` 交互） |
-| `gateway-service` | Java/Spring Boot | 运行时（占位） | 当前更偏“样板/占位”，不等同于集群入口网关 |
-| `ai-engine` | Python/FastAPI | 运行时 | AI 执行引擎（LangGraph workbench、skills、NDJSON 事件流） |
-| `collector-service` | Python/FastAPI | 运行时 | 资源采集与复核；不拥有 Seed Packages |
-| `docs` | Jekyll | 工程化 | 本文档站 |
-| `ai-boot-framework` | Java/Maven | 工程化 | 微服务脚手架（BOM/Starter/Archetype） |
-| `infra-templates` | GitHub Actions | 工程化 | 复用工作流（CI/CD） |
-| `infra-live` | Terraform/Helm | 工程化 | 阿里云（VPC + ECS + 自建 k3s）（Terraform）+ 整体发布（集中式 Deploy） |
-
-## 现状差异与迁移注意点（按“代码真实情况”）
-
-### 1) 服务独立构建约束
-
-当前采用的工程化策略是：
-
-- Java 微服务：已完成“多仓库独立构建与发布”（容器镜像仓库 + Helm；默认 GHCR，可切换到阿里云 ACR）。
-- Python 微服务：独立构建只依赖本服务代码、OpenAPI/HTTP 契约与显式生成物。
-
-### 2) 文档漂移提示
-
-早期单仓库阶段的技术栈与运行方式与当前多仓库形态可能不同（例如前端框架、检索实现、部署方式等）。
-
-本 docs 仓库会以“当前仓库实现”为准逐步修正漂移：
-
-- “现状/已实现”必须可在代码或 OpenAPI 中验证
-- “规划/待实现”必须明确标注
+各仓库独立 Git、独立提交与验证。Java Owner 使用仓库锁定的 `ai-boot-framework` 源码提交本地安装；API 消费者使用各自消费锁与生成物。模型配置不复制到服务指引。发布通过 `infra-live/scripts/release.py` 当前 CLI，具体凭据与参数查运行规范，不在本文固定。

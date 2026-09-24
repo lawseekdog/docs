@@ -4,6 +4,9 @@ parent: 架构
 nav_order: 99
 ---
 
+> **历史设计，不是当前实现规范。** 下文保留当时方案用于追溯，其中运行时、Owner、路由或表结构已过时；不得按其恢复旧实现。当前职责见[架构边界](../LAWSEEKDOG-ARCHITECTURE-BOUNDARIES.md)，精确 API 以 Owner 源码与契约为准。
+
+
 # Legal Agent 图谱参考（草案）
 
 > 本页为设计参考，不代表当前仓库实现已经完整落地；请以各仓库代码与 `architecture/progress.md` 为准。
