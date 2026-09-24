@@ -30,7 +30,7 @@ Front / Xiaojian
 
 Matter 是平级工作事项，按类型和明确范围区分，不存在父子事项。案件、程序与委托按实际关系关联多个事项；Task、Product 与交付绑定直接归属各自 Matter。每个事项独立核验任务、成果、授权范围履行及完成条件，不因另一个事项未终结而形成父子阻塞。同类型允许具有不同工作范围的多个事项，不按案件与类型自动合并。
 
-Matter 的生命周期开放状态为 `draft -> provisional -> active`，终态包括 `completed`、`cancelled`、`declined`、`superseded`。Task、Document、Contract Review、Case Stage 和 DSH Session 是独立状态轴，不能互相推断或合并。
+Matter 的开放状态包括 `draft`、`provisional`、`active`；它们并非每个事项都必须依次经历的步骤，实际转换以 Owner 规则为准。终态包括 `completed`、`cancelled`、`declined`、`superseded`。Task、Document、Contract Review、Case Stage 和 DSH Session 是独立状态轴，不能互相推断或合并。
 
 ## 业务入口
 
