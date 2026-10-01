@@ -1,13 +1,9 @@
-# AI 代理协作说明（Codex）
+# LawSeekDog Documentation
 
-> 本文件用于给 Codex 类工具提供仓库上下文与约束。
->
-> 若本文件与 `CLAUDE.md` 不一致，以本文件为准。
-
-涉及架构、Owner、业务流程或运行验收时，读取唯一共享规范
-`lawseekdog-agent-skills/workspace-guidance/LAWSEEKDOG-WORKSPACE-GUIDANCE.md`
-的相关章节；通过其同目录 `TASK-ROUTING.md` 选择资料。独立 checkout
-按共享规范的工作区解析规则定位，不假定继承聚合目录指令。
+涉及架构、Owner、业务流程或运行验收时先按
+`lawseekdog-agent-skills/workspace-guidance/TASK-ROUTING.md` 选择资料，再读
+`lawseekdog-agent-skills/workspace-guidance/LAWSEEKDOG-WORKSPACE-GUIDANCE.md` 的相关章节。
+独立 checkout 按共享规范定位工作区；冲突按其“文档分层与按需读取”处理。
 
 ## 1. 仓库角色
 
@@ -30,3 +26,5 @@
 
 - `bundle install`
 - `bundle exec jekyll serve --livereload`
+
+文档修改检查引用、现状依据和 `git diff --check`；Jekyll 配置或站点构建修改增加相应构建验证。
