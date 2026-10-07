@@ -10,6 +10,7 @@ has_children: true
 - [Owner、入口与会话边界](../LAWSEEKDOG-ARCHITECTURE-BOUNDARIES.md)
 - [系统架构](overview.md)、[服务拓扑](microservices.md)
 - [准备稿、保存与版本数据流](data-flow.md)
+- [小简前端嵌入契约](xiaojian-front-embedding-contract.md)
 - [仓库职责](repositories.md)、[进度核验](progress.md)
 
 历史设计或待核验资料（不能作为当前实现指令）：
