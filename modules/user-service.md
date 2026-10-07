@@ -35,6 +35,6 @@ user-service 负责用户域数据：
 
 ## 与其它服务的关系
 
-- auth-service：查询用户账号信息/权限绑定
+- 自 2026-10-07 起承载原 auth-service 的认证、RBAC 与 `/internal/auth`（详见 [auth-service 并入说明](./auth-service.md)）
 - matter-service：创建事项时用于判断创建者类型（lawyer/firm_admin）并绑定承办律师/律所
 - files-service/organization-service：用于权限/归属校验

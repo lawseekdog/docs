@@ -48,7 +48,7 @@ nav_order: 1
 
 ## 4) 常用请求头（跨服务一致）
 
-- `Authorization: Bearer <jwt>`：对外认证（由 `auth-service` 签发；各服务可按需启用资源服务器校验）
+- `Authorization: Bearer <jwt>`：对外认证（由 `user-service` 签发（原 auth-service 已于 2026-10-07 并入）；各服务可按需启用资源服务器校验）
 - `X-Request-Id`：链路追踪 ID（服务端可生成并回写；日志 MDC 必须透传）
 - `X-Organization-Id`：组织/律所上下文（是否强制由配置决定；JPA 审计会使用）
 - `Idempotency-Key`：幂等键（涉及扣费/任务/写外部系统等写操作必须支持）

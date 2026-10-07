@@ -12,7 +12,7 @@ nav_order: 5
 | Agent 与专业能力 | `ai-engine-v2` | 官方 DSH profile、Host、Xiaojian、法律与社区插件、契约/eval |
 | 业务 Owner | `firm-service`、`case-service`、`matter-service`、`document-workspace-service` | 委托、案件程序、事项成果任务、文书生命周期 |
 | 来源与渲染 | `files-service`、`templates-service`、`platform-service`、`knowledge-service`、`collector-service` | 文件版本、模板渲染、目录与规则、知识素材与采集 |
-| 身份与支持域 | `user-service`、`lawyer-profile-service`、`auth-service`、`billing-service`、`notification-service` | 各自领域，以服务契约为准 |
+| 身份与支持域 | `user-service`（含原 auth-service，2026-10-07 并入）、`lawyer-profile-service`、`billing-service`、`notification-service` | 各自领域，以服务契约为准 |
 | 工程 | `ai-boot-framework`、`infra-templates`、`infra-live` | Java 构建基线、CI 资源、拓扑与发布 |
 | 文档与开发技能 | `docs`、`lawseekdog-agent-skills`、`lawseekdog-codex-plugins` | 项目事实、共享规范与技能、开发插件 |
 

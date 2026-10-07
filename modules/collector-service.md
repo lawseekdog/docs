@@ -21,7 +21,7 @@ collector-service 在当前系统里承担两类职责：
 - FastAPI
 - SQLAlchemy + Postgres
 - 内部鉴权：`X-Internal-Api-Key`（seed packages 列表/manifest/download 等）
-- 权限校验：通过 auth-service 校验 permission（collector:read / collector:manage）
+- 权限校验：通过 user-service（`/internal/auth/validate-token`）校验 permission（collector:read / collector:manage）
 
 ## API（摘要）
 

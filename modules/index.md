@@ -15,7 +15,7 @@ has_children: true
 - [knowledge-service（知识库）](./knowledge-service.md)
 - [files-service（文件与对象存储）](./files-service.md)
 - [templates-service（模板/文书）](./templates-service.md)
-- [auth-service / user-service / organization-service](./auth-service.md)
+- [user-service（含原 auth-service 能力）/ organization-service](./user-service.md)
 
 工程化：
 
