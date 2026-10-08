@@ -118,6 +118,10 @@ submission echo），Front 立即放手。`submission-returned.v1` 表示请求�
 改动时，用 `input.setDraft` 放回原文（`draft_restored: true`）。受理后若原生 echo 未被观察到即退役，
 Host 同样在输入框中提示并放回原文，不再向 Front 发事件。不存在"结果待核对"状态；
 `submission-observed.v1`、`submission-unconfirmed.v1` 与 15 秒观察计时已删除。
+Host 在会话绑定后立即登记原生 pending echo（`beginHostedSubmission`），律师的消息先出现在会话中，
+目标绑定与材料接纳随后在其下进行，prompt 复用同一 request identity；prompt 之前的任何失败都会让 echo 退役。
+启动器请求（无专业业务）从点击开始到送达，Front 不覆盖官方 surface；新会话未能打开时只在会话旁提示
+"新会话未能打开"，由律师选择重新开始或关闭。
 `submit_message` 在入队前被 Host 拒收（`submit-requires-current-session`、`front-command-*`）时，
 Host 仍发 `surface-error.v1`，Front 按确定未发送处理。
 
@@ -171,7 +175,7 @@ workspace**（即 `presentation: 'overlay'`），移动端 `/m/xiaojian` 全屏�
 | 层 | 形态 |
 | --- | --- |
 | 首页卡片墙 `[data-xiaojian-home]`（仅非主页面、非移动端） | `absolute inset-0 z-10`，盖在 iframe 上 |
-| 打开/新建会话门（`data-xiaojian-open-gate`，仅 opening/failed/cancelled；发送期间已不覆盖，2026-10-08） | `absolute inset-0 z-[15]` |
+| 业务会话打开门（`data-xiaojian-open-gate`，仅专业页面打开业务会话的 opening/failed/cancelled；启动器请求与发送期间已不覆盖，2026-10-08） | `absolute inset-0 z-[15]` |
 | 新建会话对话框 | `absolute inset-0 z-30` |
 | 连接中封面 `[data-xiaojian-connecting]` | `absolute inset-0 z-10` |
 | `blockConversationFrame` 路径 | 给 iframe 加 `inert`，并加 `invisible pointer-events-none` |
