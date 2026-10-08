@@ -15,7 +15,7 @@ nav_order: 7
 > - 宿主侧：`frontend/src/features/assistant/xiaojianBridgeMessages.ts`、`DshConversationSurface.tsx`、`useDshSurfaceConnection.ts`、`dshWebToken.ts`
 > - 锁定测试：`frontend/tests/unit/xiaojian-page-mode-mounted.test.mjs` 等
 >
-> 核对基线：2026-10-07 的 `ai-engine-v2` main（官方 DSH `0.2.0-rc.2`）与 `frontend` main。
+> 核对基线：2026-10-07 的 `ai-engine-v2` main（官方 DSH `0.2.0-rc.2`）与 `frontend` main；§4 发送结果按 2026-10-08 的 ai-engine-v2#519 与 frontend#353。
 > 本文只写 bridge 的线协议与嵌入现状；小简的业务规则（入口、不自动发送、布局）以共享规范
 > G「Front、Xiaojian 与文书」为准，本文不重复。**引用代码时以符号名为准。**
 
@@ -99,8 +99,7 @@ Front 侧解析器为 `xiaojianBridgeMessages.ts` 的 `parseXiaojianBridgeMessag
 | `surface-ready.v1` | — | 官方界面就绪；**仅在 composer 唯一存在后发出** |
 | `attention.v1` | `attention` (`idle`\|`executing`\|`decision_required`\|`failed`) | 官方注意状态 |
 | `submission-accepted.v1` | `session_id`, `nonce` | **准入回执**：Host 已受理该 prompt |
-| `submission-observed.v1` | `session_id`, `nonce` | 官方界面已观察到投递 |
-| `submission-unconfirmed.v1` | `session_id`, `nonce`, `reason` (`timeout`\|`retired`) | **未确认定论**，带原因 |
+| `submission-returned.v1` | `session_id`, `nonce`, `reason`, `draft_restored` | **未发送定论**：原因已显示在该会话的官方输入框；`draft_restored` 表示原文已放回官方输入框 |
 | `reference-inserted.v1` | `session_id`, `nonce` | 文档引用已插入 |
 | `session-ready.v1` | `session_id` | 会话就绪 |
 | `session-selected.v1` | `session_id` | 经历史来源选中会话 |
@@ -112,9 +111,19 @@ Front 侧解析器为 `xiaojianBridgeMessages.ts` 的 `parseXiaojianBridgeMessag
 | `mobile-display.v1` | `source`, `isConversation`, `hasDraft` | 移动端显示投影 |
 | `home-launch.v1` | `intent` | 主页面首页面板把业务入口交给 Front 启动器 |
 
-**观察窗口（已实现）：** `HOSTED_SUBMISSION_OBSERVATION_TIMEOUT_MS = 15_000`。官方在发出
-`submission-accepted.v1` 的同一流程中武装该计时器，超时则发
-`submission-unconfirmed.v1 { reason: 'timeout' }`。即：**官方一旦受理，15 秒内必有定论。**
+**发送结果（已实现，2026-10-08）：** 一条 `submit_message` 只会得到一个定论。
+`submission-accepted.v1` 表示官方 `Session.prompt` 已受理；从此该请求只记录在官方会话中（原生
+submission echo），Front 立即放手。`submission-returned.v1` 表示请求在受理前结束、未发送：Host 照官方
+输入框默认 sink 的语义处理——原因经 `input.notify` 显示在该会话的输入框上；不带专业目标且输入框未被
+改动时，用 `input.setDraft` 放回原文（`draft_restored: true`）。受理后若原生 echo 未被观察到即退役，
+Host 同样在输入框中提示并放回原文，不再向 Front 发事件。不存在"结果待核对"状态；
+`submission-observed.v1`、`submission-unconfirmed.v1` 与 15 秒观察计时已删除。
+Host 在会话绑定后立即登记原生 pending echo（`beginHostedSubmission`），律师的消息先出现在会话中，
+目标绑定与材料接纳随后在其下进行，prompt 复用同一 request identity；prompt 之前的任何失败都会让 echo 退役。
+启动器请求（无专业业务）从点击开始到送达，Front 不覆盖官方 surface；新会话未能打开时只在会话旁提示
+"新会话未能打开"，由律师选择重新开始或关闭。
+`submit_message` 在入队前被 Host 拒收（`submit-requires-current-session`、`front-command-*`）时，
+Host 仍发 `surface-error.v1`，Front 按确定未发送处理。
 
 ## 5. 硬不变式
 
@@ -124,7 +133,7 @@ Front 侧解析器为 `xiaojianBridgeMessages.ts` 的 `parseXiaojianBridgeMessag
 | 2 | 打开/关闭/刷新官方界面**必须只读** | 已实现 | 同上 |
 | 3 | 决策由官方 Approval 拥有，Front 不合成点击/决策/会话状态 | 已实现 | `client.ts` Approval 投影注释 |
 | 4 | 主页面不得覆盖或隔离官方 surface（见 §6） | 已实现 | `xiaojian-page-mode-mounted.test.mjs` |
-| 5 | 提交需准入回执；未确认需由官方给出原因 | **部分实现**：准入之后的未确认有原因；**准入之前无上界**（§7.1） | §4 事件链；§7.1 |
+| 5 | 每条提交只有一个由官方给出的定论（受理或带原因的退回），Front 不合成发送结果 | 已实现（ai-engine-v2#519、frontend#353）；准入前的上界见 §7.1 | §4 事件链；`client-lifecycle.spec.ts`、`hosted-submission-return.spec.ts`、`xiaojian-handoff-barrier.test.ts` |
 | 6 | origin 精确匹配；hosted 令牌 URL 与前端同源，且不得携带前端 origin 查询参数 | 已实现 | `dshWebToken.ts`；`requireParentOrigin` |
 | 7 | 打开界面**不得**自动发送 | 已实现 | `shouldAutoSendPromptOnXiaojianOpen()` 恒返回 `false` |
 
@@ -166,7 +175,7 @@ workspace**（即 `presentation: 'overlay'`），移动端 `/m/xiaojian` 全屏�
 | 层 | 形态 |
 | --- | --- |
 | 首页卡片墙 `[data-xiaojian-home]`（仅非主页面、非移动端） | `absolute inset-0 z-10`，盖在 iframe 上 |
-| 发送/交接门 | `absolute inset-0 z-[15]` |
+| 业务会话打开门（`data-xiaojian-open-gate`，仅专业页面打开业务会话的 opening/failed/cancelled；启动器请求与发送期间已不覆盖，2026-10-08） | `absolute inset-0 z-[15]` |
 | 新建会话对话框 | `absolute inset-0 z-30` |
 | 连接中封面 `[data-xiaojian-connecting]` | `absolute inset-0 z-10` |
 | `blockConversationFrame` 路径 | 给 iframe 加 `inert`，并加 `invisible pointer-events-none` |
@@ -186,10 +195,9 @@ workspace**（即 `presentation: 'overlay'`），移动端 `/m/xiaojian` 全屏�
 
 ## 7. 已知空白与风险
 
-### 7.1 新建会话准入前可能永远没有回执（**硬伤，已定位，修复中**）
+### 7.1 新建会话准入前可能永远没有回执（**已修复**：ai-engine-v2#422）
 
-**15 秒超时只覆盖准入之后。** `HOSTED_SUBMISSION_OBSERVATION_TIMEOUT_MS` 在发出
-`submission-accepted.v1` 的同一流程里才开始计时；准入之前，官方侧没有任何计时器。
+准入之前，官方侧原本没有任何计时器。
 
 **触发条件（已用测试复现）：** `start_new_session` 创建并打开会话后，`runPending` 里的
 `applyReadyGate` 要同时满足两件事：会话列表把新会话列为当前会话，并且它的 Agent-scoped
@@ -200,11 +208,11 @@ conversation 已存在。但它**只在会话列表通知时重查**。scoped co
 - `actionInFlight` 永久为 `true`；
 - 不发 `session-ready.v1`；
 - 排队的 `submit_message` 停在 `submitPending` 的 `wait` 门；
-- `submission-accepted.v1`、`submission-unconfirmed.v1`、`surface-error.v1` **一个都不发**。
+- `submission-accepted.v1`、`surface-error.v1` **一个都不发**。
 
 **后果：** Front 没有任何可据以失败的事件，只剩 `useXiaojianHandoff.ts` 的 25 秒提示，
-而它声明"不会自动重复发送"，即无限等待。所以 25 秒提示**不是**官方 15 秒超时的重复
-真值来源：它盖住的是官方侧没有上界的一段窗口，缺陷在于**没有原因、也没有终点**。
+而它声明"不会自动重复发送"，即无限等待。它盖住的是官方侧没有上界的一段窗口，
+缺陷在于**没有原因、也没有终点**。
 
 **修复：** [ai-engine-v2#422](https://github.com/lawseekdog/ai-engine-v2/pull/422)
 （Issue #421）。新会话列为当前会话后，改用现成的有界等待 `waitForScopedConversation`
@@ -212,12 +220,10 @@ conversation 已存在。但它**只在会话列表通知时重查**。scoped co
 
 - 等到：照常完成创建，并发送排队的请求一次。
 - 等不到：发 `surface-error.v1` `lawseekdog-xiaojian:conversation-scope-unavailable`，
-  丢弃排队请求、不重放，并释放桥。Front 已有对应终态"会话创建结果待核对"，不重建、不重发。
+  丢弃排队请求、不重放，并释放桥。Front 显示"新会话未能打开"（本次请求尚未发送，原文和材料保留），
+  只有律师点"重新开始"才再建一个会话；重新连接只恢复连接，不重建、不重发。
 
-**注意：** `submission-unconfirmed.v1` 不能用于准入前。Front 只在收到
-`submission-accepted.v1` 之后才处理它，之前一律忽略。
-
-**状态：** 合并前，§5 不变式 5 仍是**部分实现**。合并后，准入前的这一段也有了上界和原因。
+**状态：** 已合并。准入前的这一段有了上界和原因；准入后的定论见 §4「发送结果」。
 
 ### 7.2 覆盖层与移动端 home 的整改与条文
 
