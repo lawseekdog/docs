@@ -28,7 +28,7 @@ secrets: inherit
 
 已对齐的 Java 服务仓库（示例）：
 
-- auth-service、user-service、matter-service、consultations-service、knowledge-service、templates-service、files-service、platform-service 等
+- user-service、matter-service、consultations-service、knowledge-service、templates-service、files-service、platform-service 等
 
 ## 工作流能力（概览）
 
