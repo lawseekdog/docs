@@ -67,7 +67,7 @@ Front 现在那个 25 秒提示之所以不构成违规，是因为它并不宣�
    归类错误码（契约前缀可识别但版本不符 → `front-command-contract-unsupported`；
    命令未知或键集不符 → `front-command-invalid`；第三方 `contract_version` → 静默忽略）。
 
-**命令全集（10 条）。** 「精确键集」除 `command` / `contract_version` / `nonce` 外：
+**命令全集（11 条）。** 「精确键集」除 `command` / `contract_version` / `nonce` 外：
 
 | 命令 | 精确键集 | 作用 |
 | --- | --- | --- |
@@ -76,6 +76,7 @@ Front 现在那个 25 秒提示之所以不构成违规，是因为它并不宣�
 | `set_surface_presentation` | `presentation` (`page`\|`overlay`) | 设定根节点 `data-xiaojian-presentation`；`page` 显示官方侧栏 |
 | `set_history_scope` | `scope` (`HistoryScope` \| `null`) | 限制官方会话列表范围；`null` 列出全部 |
 | `focus_composer` | — | 聚焦官方 composer |
+| `open_home` | — | 桌面（主页面与覆盖层）打开官方首页面板，当前会话保留在其后；请求、打开或新建进行中 → `navigation-busy`，未声明桌面呈现或移动端 → `front-command-invalid` |
 | `insert_document_reference` | `session_id`, `reference` | 仅写入官方输入层；**不改草稿、不发送**；nonce 去重防重放 |
 | `open_session` | `session_id` | 经官方导航状态打开该 Session |
 | `start_new_session` | `intent`, `references`, `sessionTitle`, `workspaceKey`, `workspaceTitle` | **唯一能创建 Session 的命令**，经 Host Remote 铸造预置绑定会话 |
@@ -109,7 +110,7 @@ Front 侧解析器为 `xiaojianBridgeMessages.ts` 的 `parseXiaojianBridgeMessag
 | `business-navigation.v1` | `action: 'open'`, `path` | 请求 Front 做业务导航（path 必须同源） |
 | `mobile-navigation.v1` | `action: 'conversation'\|'history'`；或 `action: 'launcher'`, `intent` | 移动端导航请求 |
 | `mobile-display.v1` | `source`, `isConversation`, `hasDraft` | 移动端显示投影 |
-| `home-launch.v1` | `intent` | 主页面首页面板把业务入口交给 Front 启动器 |
+| `home-launch.v1` | `intent` | 官方首页面板（主页面与无业务的覆盖层）把业务入口交给 Front 启动器 |
 
 **发送结果（已实现，2026-10-08）：** 一条 `submit_message` 只会得到一个定论。
 `submission-accepted.v1` 表示官方 `Session.prompt` 已受理；从此该请求只记录在官方会话中（原生
@@ -121,7 +122,8 @@ Host 同样在输入框中提示并放回原文，不再向 Front 发事件。�
 Host 在会话绑定后立即登记原生 pending echo（`beginHostedSubmission`），律师的消息先出现在会话中，
 目标绑定与材料接纳随后在其下进行，prompt 复用同一 request identity；prompt 之前的任何失败都会让 echo 退役。
 启动器请求（无专业业务）从点击开始到送达，Front 不覆盖官方 surface；新会话未能打开时只在会话旁提示
-"新会话未能打开"，由律师选择重新开始或关闭。
+"新会话未能打开"，由律师选择重新开始或关闭。桌面 `start_new_session` 期间官方首页面板停在中心区并显示
+"正在新建讨论…"（入口禁用），新会话打开后切到该会话；上一个会话不会在此期间露出（2026-10-09）。
 `submit_message` 在入队前被 Host 拒收（`submit-requires-current-session`、`front-command-*`）时，
 Host 仍发 `surface-error.v1`，Front 按确定未发送处理。
 
@@ -160,7 +162,7 @@ Host 仍发 `surface-error.v1`，Front 按确定未发送处理。
 
 **结论：主页面模式已实现且被锁定，是合规的基准形态。**
 
-### 6.2 覆盖层模式：布局有规定，覆盖层内的自绘层不合规（**待整改**）
+### 6.2 覆盖层模式：布局有规定，覆盖层内的自绘层不合规（**部分整改**）
 
 共享规范 G「Front、Xiaojian 与文书」规定了布局：桌面端 `XiaojianOrb` 展开为**右侧覆盖
 workspace**（即 `presentation: 'overlay'`），移动端 `/m/xiaojian` 全屏。所以小简整体浮在业务页上
@@ -170,17 +172,25 @@ workspace**（即 `presentation: 'overlay'`），移动端 `/m/xiaojian` 全屏�
 明确决定：**agent 交互的界面归官方嵌入 surface，Front 不得自行改造**。自有 UI 只能与它并列，
 不能盖在它上面，也不能禁用它。这条决定尚未写入共享规范。
 
-按这条决定，`DshConversationSurface.tsx` 现有的以下自绘层**不合规**：
+已整改（2026-10-09）：
+
+- 覆盖层首页由官方 surface 的首页面板承担（与主页面同一面板，`open_home` / `home-launch.v1`），
+  Front 不再自绘首页卡片墙 `[data-xiaojian-home]`。
+- 专业页面打开业务会话（以及专业页面请求打开讨论）的加载中状态改为会话上方的提示条
+  `[data-xiaojian-opening-strip]`，不再整屏覆盖。加载期间 iframe 保持 `inert`；官方 surface 尚未
+  显示目标会话时 iframe 不可见，显示目标会话后即可见（仍不可输入），业务关联确认后恢复输入。
+
+按这条决定，`DshConversationSurface.tsx` 仍存在的以下自绘层**不合规**：
 
 | 层 | 形态 |
 | --- | --- |
-| 首页卡片墙 `[data-xiaojian-home]`（仅非主页面、非移动端） | `absolute inset-0 z-10`，盖在 iframe 上 |
-| 业务会话打开门（`data-xiaojian-open-gate`，仅专业页面打开业务会话的 opening/failed/cancelled；启动器请求与发送期间已不覆盖，2026-10-08） | `absolute inset-0 z-[15]` |
+| 请求打开门（`data-xiaojian-open-gate`，仅专业页面请求的 failed/cancelled） | `absolute inset-0 z-[15]` |
+| 业务会话选择面板 `[data-xiaojian-bound-business-session]`（需律师选择、尚无会话、读取失败或关联不符时） | `absolute inset-0 z-20` |
 | 新建会话对话框 | `absolute inset-0 z-30` |
 | 连接中封面 `[data-xiaojian-connecting]` | `absolute inset-0 z-10` |
-| `blockConversationFrame` 路径 | 给 iframe 加 `inert`，并加 `invisible pointer-events-none` |
+| iframe 隔离（`blockConversationFrame` / `hideConversationFrame`） | 给 iframe 加 `inert`；未显示目标会话时加 `invisible pointer-events-none` |
 
-`inset-x-3 top-3 z-20` 的两条提示条不遮挡会话本体，属 §6.4 的并列 UI。
+`inset-x-3 top-3 z-20` 的提示条（打开中、启动器失败、退回原文、发送中断）不遮挡会话本体，属 §6.4 的并列 UI。
 
 ### 6.3 移动端 home：**未规定**
 
@@ -227,8 +237,9 @@ conversation 已存在。但它**只在会话列表通知时重查**。scoped co
 
 ### 7.2 覆盖层与移动端 home 的整改与条文
 
-§6.2 的自绘层需要整改为并列形态，或改由官方 surface 承担。§6.2 的决定也需要写入共享规范
-G「Front、Xiaojian 与文书」。§6.3 待核对。以上均为**规划中**，尚无工单。
+覆盖层首页与业务会话加载中状态已整改（§6.2，2026-10-09）。§6.2 表中其余自绘层需要整改为并列形态，
+或改由官方 surface 承担；业务会话选择面板按用户决定暂不改动。§6.2 的决定也需要写入共享规范
+G「Front、Xiaojian 与文书」。§6.3 待核对。以上剩余项均为**规划中**，尚无工单。
 
 ### 7.3 对官方 Web Client 的补丁
 
