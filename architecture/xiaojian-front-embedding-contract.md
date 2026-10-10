@@ -67,16 +67,15 @@ Front 现在那个 25 秒提示之所以不构成违规，是因为它并不宣�
    归类错误码（契约前缀可识别但版本不符 → `front-command-contract-unsupported`；
    命令未知或键集不符 → `front-command-invalid`；第三方 `contract_version` → 静默忽略）。
 
-**命令全集（11 条）。** 「精确键集」除 `command` / `contract_version` / `nonce` 外：
+**命令全集（10 条）。** 「精确键集」除 `command` / `contract_version` / `nonce` 外：
 
 | 命令 | 精确键集 | 作用 |
 | --- | --- | --- |
-| `set_mobile_view` | `view` (`home`\|`conversation`) | 选择移动端呈现 |
-| `report_surface_state` | `mobile` (boolean) | 请求回报 `surface-state.v1`（回显 nonce） |
+| `report_surface_state` | — | 请求回报 `surface-state.v1`（回显 nonce） |
 | `set_surface_presentation` | `presentation` (`page`\|`overlay`) | 设定根节点 `data-xiaojian-presentation`；`page` 显示官方侧栏 |
 | `set_history_scope` | `scope` (`HistoryScope` \| `null`) | 限制官方会话列表范围；`null` 列出全部 |
 | `focus_composer` | — | 聚焦官方 composer |
-| `open_home` | — | 桌面（主页面与覆盖层）打开官方首页面板，当前会话保留在其后；请求、打开或新建进行中 → `navigation-busy`，未声明桌面呈现或移动端 → `front-command-invalid` |
+| `open_home` | — | 桌面（主页面与覆盖层）打开官方首页面板，当前会话保留在其后；请求、打开或新建进行中 → `navigation-busy`，未声明桌面呈现 → `front-command-invalid` |
 | `insert_document_reference` | `session_id`, `reference` | 仅写入官方输入层；**不改草稿、不发送**；nonce 去重防重放 |
 | `open_session` | `session_id` | 经官方导航状态打开该 Session |
 | `start_new_session` | `intent`, `references`, `workspaceKey`, `workspaceTitle` | **唯一能创建 Session 的命令**，经 Host Remote 铸造预置绑定会话；不携带会话标题 |
@@ -113,10 +112,8 @@ Front 侧解析器为 `xiaojianBridgeMessages.ts` 的 `parseXiaojianBridgeMessag
 | `session-selected.v1` | `session_id` | 经历史来源选中会话 |
 | `session-search-closed.v1` | — | 官方搜索已关闭 |
 | `surface-error.v1` | `error` | 官方错误码 |
-| `surface-state.v1` | `nonce`, `surface_ready`, `session_id`, `display` | 对 `report_surface_state` 的权威回报 |
+| `surface-state.v1` | `nonce`, `surface_ready`, `session_id` | 对 `report_surface_state` 的权威回报 |
 | `business-navigation.v1` | `action: 'open'`, `path` | 请求 Front 做业务导航（path 必须同源） |
-| `mobile-navigation.v1` | `action: 'conversation'\|'history'`；或 `action: 'launcher'`, `intent` | 移动端导航请求 |
-| `mobile-display.v1` | `source`, `isConversation`, `hasDraft` | 移动端显示投影 |
 | `home-launch.v1` | `intent` | 官方首页面板（主页面与无业务的覆盖层）把业务入口交给 Front 启动器 |
 
 **发送结果（已实现，2026-10-08）：** 一条 `submit_message` 只会得到一个定论。
@@ -172,7 +169,7 @@ Host 仍发 `surface-error.v1`，Front 按确定未发送处理。
 ### 6.2 覆盖层模式：布局有规定，覆盖层内的自绘层不合规（**部分整改**）
 
 共享规范 G「Front、Xiaojian 与文书」规定了布局：桌面端 `XiaojianOrb` 展开为**右侧覆盖
-workspace**（即 `presentation: 'overlay'`），移动端 `/m/xiaojian` 全屏。所以小简整体浮在业务页上
+workspace**（即 `presentation: 'overlay'`）。所以小简整体浮在业务页上
 是规定的形态。
 
 未规定的是：在这个覆盖面板**内部**，Front 能不能在官方 iframe 上叠自己的界面。用户 2026-10-04
@@ -197,15 +194,9 @@ workspace**（即 `presentation: 'overlay'`），移动端 `/m/xiaojian` 全屏�
 | 连接中封面 `[data-xiaojian-connecting]` | `absolute inset-0 z-10` |
 | iframe 隔离（`blockConversationFrame` / `hideConversationFrame`） | 给 iframe 加 `inert`；未显示目标会话时加 `invisible pointer-events-none` |
 
-`inset-x-3 top-3 z-20` 的提示条（打开中、启动器失败、退回原文、发送中断）不遮挡会话本体，属 §6.4 的并列 UI。
+`inset-x-3 top-3 z-20` 的提示条（打开中、启动器失败、退回原文、发送中断）不遮挡会话本体，属 §6.3 的并列 UI。
 
-### 6.3 移动端 home：**未规定**
-
-移动端 home 态下 Front 自绘 `MobileStartComposer`（`frontend/src/apps/mobile/MobileLauncherProvider.tsx`），
-替代官方 composer 的呈现。官方侧不存在对应的禁止条款，宿主侧也无锁定测试。按 §6.2 的决定
-同样需要核对是并列还是替代。
-
-### 6.4 明确允许
+### 6.3 明确允许
 
 与官方 surface **并列**、不覆盖它的自有 UI：启动器、全局顶栏、`inset-x-*` 提示条、自有对话框。
 它们不改变官方界面的可达性。
@@ -242,11 +233,11 @@ conversation 已存在。但它**只在会话列表通知时重查**。scoped co
 
 **状态：** 已合并。准入前的这一段有了上界和原因；准入后的定论见 §4「发送结果」。
 
-### 7.2 覆盖层与移动端 home 的整改与条文
+### 7.2 覆盖层的整改与条文
 
 覆盖层首页与业务会话加载中状态已整改（§6.2，2026-10-09）。§6.2 表中其余自绘层需要整改为并列形态，
 或改由官方 surface 承担；业务会话选择面板按用户决定暂不改动。§6.2 的决定也需要写入共享规范
-G「Front、Xiaojian 与文书」。§6.3 待核对。以上剩余项均为**规划中**，尚无工单。
+G「Front、Xiaojian 与文书」。以上剩余项均为**规划中**，尚无工单。
 
 ### 7.3 对官方 Web Client 的补丁
 
@@ -264,7 +255,7 @@ G「Front、Xiaojian 与文书」。§6.3 待核对。以上剩余项均为**规
 | 不变式 | 验证方式 |
 | --- | --- |
 | 主页面无覆盖、无隔离（§6.1） | `frontend/tests/unit/xiaojian-page-mode-mounted.test.mjs` |
-| 命令键集与拒绝语义（§3） | `ai-engine-v2/packages/xiaojian/tests/client.spec.ts`、`mobile-bridge.spec.ts`、`desktop-page.spec.ts` |
+| 命令键集与拒绝语义（§3） | `ai-engine-v2/packages/xiaojian/tests/client.spec.ts`、`desktop-page.spec.ts` |
 | 事件解析与 origin 校验（§4） | `frontend/tests/unit/xiaojian-matter-discussion-mounted.test.mjs`、`xiaojian-standalone-entries-mounted.test.mjs` |
 | 导航 fail-closed（§5.1） | `ai-engine-v2/packages/xiaojian/tests/desktop-page.spec.ts`、`client-lifecycle.spec.ts` |
 | 新建会话准入前的上界（§7.1） | `client-lifecycle.spec.ts`（#422 合并后） |
