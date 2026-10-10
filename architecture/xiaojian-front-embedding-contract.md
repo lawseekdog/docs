@@ -79,7 +79,7 @@ Front 现在那个 25 秒提示之所以不构成违规，是因为它并不宣�
 | `open_home` | — | 桌面（主页面与覆盖层）打开官方首页面板，当前会话保留在其后；请求、打开或新建进行中 → `navigation-busy`，未声明桌面呈现或移动端 → `front-command-invalid` |
 | `insert_document_reference` | `session_id`, `reference` | 仅写入官方输入层；**不改草稿、不发送**；nonce 去重防重放 |
 | `open_session` | `session_id` | 经官方导航状态打开该 Session |
-| `start_new_session` | `intent`, `references`, `sessionTitle`, `workspaceKey`, `workspaceTitle` | **唯一能创建 Session 的命令**，经 Host Remote 铸造预置绑定会话 |
+| `start_new_session` | `intent`, `references`, `workspaceKey`, `workspaceTitle` | **唯一能创建 Session 的命令**，经 Host Remote 铸造预置绑定会话；不携带会话标题 |
 | `set_session_search` | `open`；或 `open`, `query`（两种精确键集） | 开合官方会话搜索 |
 | `submit_message` | `intent`, `expected_agent_preset`, `text`, `materials`，**至多一个** target：`library_template` / `contract_review_decision_target` / `contract_review_batch_decision_target` / `document_action_target` / `document_revision_decision_target` | 经官方会话服务发送 prompt 与材料 |
 
@@ -87,7 +87,14 @@ Front 现在那个 25 秒提示之所以不构成违规，是因为它并不宣�
 `expected_agent_preset` 必须属于 `AGENT_PRESET_BY_INTENT` 的取值集合。
 
 **现状提示（不是规范，是既成事实）：** 线上键名不统一——`session_id` 为 snake_case，而
-`sessionTitle` / `workspaceKey` / `workspaceTitle` 为 camelCase。新命令请勿扩大这种不一致。
+`workspaceKey` / `workspaceTitle` 为 camelCase。新命令请勿扩大这种不一致。
+
+**会话标题与工作方式（已实现，2026-10-10）：** 创建会话不再写入固定标题；`start_new_session` 与
+`preselect_entry` 携带 `sessionTitle` 即键集不符被拒。标题由官方 DSH `dsh-session-title` 服务管理：
+`dsh-base` 挂载的首消息提供方（`dsh-session-title-first-prompt-llm`）按第一条律师消息生成；律师在主页面
+历史中显式重命名后标题固定。会话尚未发送消息时不进入历史列表；历史行另行显示该会话预设对应的工作方式。
+composer 左下角的工作方式只在空白会话中可选（官方空白会话预设切换）；会话开始后显示为只读标签，
+另换工作方式请新建会话。
 
 ## 4. 事件（官方 Client → Front）
 
