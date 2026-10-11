@@ -27,52 +27,16 @@ LawSeekDog 的 Java 微服务采用“复用工作流”模式：
 行为：
 
 - PR：构建（不推送镜像）
-- main/tag：构建并推送镜像到容器镜像仓库（默认 GHCR，可切换到阿里云 ACR）
+- main/tag：构建并推送镜像到 GHCR
 - 部署：推荐由 `infra-live` 统一执行（避免每个业务仓库都持有部署凭据）
 
 ## 2) 镜像命名与标签
 
-- 默认镜像仓库：`ghcr.io/<org>/<repo>`
-- 可切换到：阿里云 ACR（示例：`registry.cn-hangzhou.aliyuncs.com/<namespace>/<repo>`）
+- 镜像仓库：`ghcr.io/<org>/<repo>`
 - 标签由 `docker/metadata-action` 生成，常见包括：
   - `main`
   - `vX.Y.Z`
   - `sha-<short>`
-
-## 2.1) 切换到阿里云 ACR（推荐 OIDC）
-
-`infra-templates` 的工作流支持 `aliyun-acr`（阿里云 ACR）。两种方式：
-
-1) 推荐：OIDC（无长期 AK/SK，安全/可审计）
-2) 备选：仓库 Secrets 放 AK/SK（简单但需要妥善轮换）
-
-### 开启方式（无需改 workflow，只用 Variables/Secrets）
-
-在**业务仓库**配置 Variables（Actions → Variables）：
-
-- `CI_REGISTRY_PROVIDER=aliyun-acr`
-- `ALIYUN_ACR_LOGIN_SERVER=registry.cn-hangzhou.aliyuncs.com`（示例）
-- `ALIYUN_REGION_ID=cn-hangzhou`（示例）
-- `ALIYUN_OIDC_PROVIDER_ARN=acs:ram::<uid>:oidc-provider/<name>`
-- `ALIYUN_ROLE_TO_ASSUME=acs:ram::<uid>:role/<roleName>`
-
-并确保业务仓库 `.github/workflows/ci.yml` 包含：
-
-```yaml
-permissions:
-  contents: read
-  packages: write
-  id-token: write
-```
-
-> `id-token: write` 是 OIDC 所必需的权限；没有它将无法获取阿里云 STS 临时凭据。
-
-### AK/SK fallback（不推荐长期使用）
-
-在业务仓库配置 Secrets（Actions → Secrets）：
-
-- `ALIYUN_ACCESS_KEY_ID`
-- `ALIYUN_ACCESS_KEY_SECRET`
 
 ## 3) Maven 私有依赖（GitHub Packages）
 
@@ -100,9 +64,9 @@ permissions:
 因此我们新增了 `lawseekdog/infra-live`：
 
 - 业务仓库：只负责构建并推送镜像（CI 产物=镜像）
-- `infra-live`：集中持有阿里云凭据与集群 SSH 凭据，负责“整体发布”（见 `deployment/aliyun-ack.md`）
+- `infra-live`：集中持有集群 SSH 凭据，负责“整体发布”（见 [infra-live](../modules/infra-live.md)）
 
 这样做的收益：
 
-- 阿里云/部署密钥只在一个仓库配置
+- 部署密钥只在一个仓库配置
 - 业务仓库仍可保持最小 CI 入口（引用 `infra-templates`）

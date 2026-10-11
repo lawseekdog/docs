@@ -33,7 +33,7 @@ secrets: inherit
 ## 工作流能力（概览）
 
 - PR：`mvn -q package` + `docker build` 校验（不推送镜像）
-- main / tag（v*）：构建并推送到容器镜像仓库（默认 GHCR，可切换到阿里云 ACR）
+- main / tag（v*）：构建并推送到 GHCR
   - 多架构：`linux/amd64` + `linux/arm64`
   - 标签：`main`、`vX.Y.Z`、`sha-<short>`
 

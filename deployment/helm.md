@@ -9,7 +9,7 @@ nav_order: 3
 各 Java 微服务仓库默认内置 Helm Chart：
 
 - 目录：`deploy/helm`
-- 默认镜像：`ghcr.io/lawseekdog/<service>`（也可切换到阿里云 ACR）
+- 默认镜像：`ghcr.io/lawseekdog/<service>`
 - 默认 tag：`main`（与 CI 对齐）
 
 ## 1) 安装/升级（示例）
@@ -21,15 +21,6 @@ helm upgrade --install user-service ./deploy/helm \
   --namespace user-service --create-namespace \
   --set image.repository=ghcr.io/lawseekdog/user-service \
   --set image.tag=main
-```
-
-若使用阿里云 ACR（示例）：
-
-```bash
-helm upgrade --install user-service ./deploy/helm \
-  --namespace user-service --create-namespace \
-  --set image.repository=registry.cn-hangzhou.aliyuncs.com/lawseekdog/user-service \
-  --set image.tag=v0.1.0
 ```
 
 ## 2) 配置注入（建议）
