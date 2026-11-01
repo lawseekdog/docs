@@ -15,7 +15,7 @@ nav_order: 7
 > - 宿主侧：`frontend/src/features/assistant/xiaojianBridgeMessages.ts`、`DshConversationSurface.tsx`、`useDshSurfaceConnection.ts`、`dshWebToken.ts`
 > - 锁定测试：`frontend/tests/unit/xiaojian-page-mode-mounted.test.mjs` 等
 >
-> 核对基线：2026-10-07 的 `ai-engine-v2` main（官方 DSH `0.2.0-rc.2`）与 `frontend` main；§4 发送结果按 2026-10-08 的 ai-engine-v2#519 与 frontend#353。
+> 核对基线：2026-11-01 的 `ai-engine-v2` main（命令解析在 `packages/xiaojian/src/front-command.ts`，版本常量在 `versions.ts`）与 `frontend` main；§4 发送结果按 2026-10-08 的 ai-engine-v2#519 与 frontend#353。
 > 本文只写 bridge 的线协议与嵌入现状；小简的业务规则（入口、不自动发送、布局）以共享规范
 > G「Front、Xiaojian 与文书」为准，本文不重复。**引用代码时以符号名为准。**
 
@@ -67,7 +67,7 @@ Front 现在那个 25 秒提示之所以不构成违规，是因为它并不宣�
    归类错误码（契约前缀可识别但版本不符 → `front-command-contract-unsupported`；
    命令未知或键集不符 → `front-command-invalid`；第三方 `contract_version` → 静默忽略）。
 
-**命令全集（10 条）。** 「精确键集」除 `command` / `contract_version` / `nonce` 外：
+**命令全集（13 条）。** 「精确键集」除 `command` / `contract_version` / `nonce` 外：
 
 | 命令 | 精确键集 | 作用 |
 | --- | --- | --- |
@@ -75,10 +75,13 @@ Front 现在那个 25 秒提示之所以不构成违规，是因为它并不宣�
 | `set_surface_presentation` | `presentation` (`page`\|`overlay`) | 设定根节点 `data-xiaojian-presentation`；`page` 显示官方侧栏 |
 | `set_history_scope` | `scope` (`HistoryScope` \| `null`) | 限制官方会话列表范围；`null` 列出全部 |
 | `focus_composer` | — | 聚焦官方 composer |
-| `open_home` | — | 桌面（主页面与覆盖层）打开官方首页面板，当前会话保留在其后；请求、打开或新建进行中 → `navigation-busy`，未声明桌面呈现 → `front-command-invalid` |
 | `insert_document_reference` | `session_id`, `reference` | 仅写入官方输入层；**不改草稿、不发送**；nonce 去重防重放 |
 | `open_session` | `session_id` | 经官方导航状态打开该 Session |
-| `start_new_session` | `intent`, `references`, `workspaceKey`, `workspaceTitle` | **唯一能创建 Session 的命令**，经 Host Remote 铸造预置绑定会话；不携带会话标题 |
+| `start_new_session` | `intent`, `references`, `workspaceKey`, `workspaceTitle`，可另带入口上下文 `initial_draft` / `initial_expert` / `initial_materials` / `library_template`（模板只用于文书起草入口） | **唯一能创建 Session 的命令**，经 Host Remote 铸造预置绑定会话；不携带会话标题 |
+| `preselect_entry` | 同 `start_new_session` | 与 `start_new_session` 相同，但优先复用当前空白会话（`reuseBlank`） |
+| `open_showcase` | `showcase_id`（`^[a-z0-9][a-z0-9-]{0,63}$`） | 在官方 surface 中打开一个公开示例会话 |
+| `set_composer_notice` | `notice`（对象或 `null`） | 设定 Front 的一条提示，由官方 surface 显示在 composer 上方；`null` 清除。对象精确键集：`code`、`tone`、`title`、`detail`、`original_text`、`actions`、`locks_input` |
+| `set_surface_panel` | `panel`（对象或 `null`） | 设定 Front 的一个面板，由官方 surface 显示在会话区域；`null` 清除。对象精确键集：`code`、`tone`、`busy`、`title`、`detail`、`error`、`original_text`、`materials`、`choices`、`fields`、`actions` |
 | `set_session_search` | `open`；或 `open`, `query`（两种精确键集） | 开合官方会话搜索 |
 | `submit_message` | `intent`, `expected_agent_preset`, `text`, `materials`，**至多一个** target：`library_template` / `contract_review_decision_target` / `contract_review_batch_decision_target` / `document_action_target` / `document_revision_decision_target` | 经官方会话服务发送 prompt 与材料 |
 
@@ -114,7 +117,11 @@ Front 侧解析器为 `xiaojianBridgeMessages.ts` 的 `parseXiaojianBridgeMessag
 | `surface-error.v1` | `error` | 官方错误码 |
 | `surface-state.v1` | `nonce`, `surface_ready`, `session_id` | 对 `report_surface_state` 的权威回报 |
 | `business-navigation.v1` | `action: 'open'`, `path` | 请求 Front 做业务导航（path 必须同源） |
-| `home-launch.v1` | `intent` | 官方首页面板（主页面与无业务的覆盖层）把业务入口交给 Front 启动器 |
+| `new-session-requested.v1` | — | 律师在桌面主页面点了官方“新会话”；Front 收到后自行发 `start_new_session`（官方侧从不自行创建） |
+| `showcase-requested.v1` | `showcase_id` | 官方 surface 请求打开一个示例会话 |
+| `showcase-leave.v1` | `action: 'back'`；或 `action: 'same'`, `intent`, `draft`, `expert` | 离开示例会话：返回，或以同样的入口、草稿与专家新开一个会话 |
+| `front-notice-action.v1` | `code`, `action` | 律师点了 `set_composer_notice` 提示上的按钮 |
+| `front-panel-action.v1` | `code`, `action`, `choice_id`, `values` | 律师在 `set_surface_panel` 面板上的操作 |
 
 **发送结果（已实现，2026-10-08）：** 一条 `submit_message` 只会得到一个定论。
 `submission-accepted.v1` 表示官方 `Session.prompt` 已受理；从此该请求只记录在官方会话中（原生
@@ -126,8 +133,9 @@ Host 同样在输入框中提示并放回原文，不再向 Front 发事件。�
 Host 在会话绑定后立即登记原生 pending echo（`beginHostedSubmission`），律师的消息先出现在会话中，
 目标绑定与材料接纳随后在其下进行，prompt 复用同一 request identity；prompt 之前的任何失败都会让 echo 退役。
 启动器请求（无专业业务）从点击开始到送达，Front 不覆盖官方 surface；新会话未能打开时只在会话旁提示
-"新会话未能打开"，由律师选择重新开始或关闭。桌面 `start_new_session` 期间官方首页面板停在中心区并显示
-"正在新建讨论…"（入口禁用），新会话打开后切到该会话；上一个会话不会在此期间露出（2026-10-09）。
+"新会话未能打开"，由律师选择重新开始或关闭。`start_new_session` 期间官方 surface 显示一个空白封面
+（`SessionCreationCover`，不带标题或文字，只告知辅助技术正在等待），新会话打开后切到该会话；上一个会话
+不会在此期间露出，也不能输入。
 `submit_message` 在入队前被 Host 拒收（`submit-requires-current-session`、`front-command-*`）时，
 Host 仍发 `surface-error.v1`，Front 按确定未发送处理。
 
@@ -176,25 +184,23 @@ workspace**（即 `presentation: 'overlay'`）。所以小简整体浮在业务�
 明确决定：**agent 交互的界面归官方嵌入 surface，Front 不得自行改造**。自有 UI 只能与它并列，
 不能盖在它上面，也不能禁用它。这条决定尚未写入共享规范。
 
-已整改（2026-10-09）：
+已整改（2026-11-01 核对）：
 
-- 覆盖层首页由官方 surface 的首页面板承担（与主页面同一面板，`open_home` / `home-launch.v1`），
-  Front 不再自绘首页卡片墙 `[data-xiaojian-home]`。
-- 专业页面打开业务会话（以及专业页面请求打开讨论）的加载中状态改为会话上方的提示条
-  `[data-xiaojian-opening-strip]`，不再整屏覆盖。加载期间 iframe 保持 `inert`；官方 surface 尚未
-  显示目标会话时 iframe 不可见，显示目标会话后即可见（仍不可输入），业务关联确认后恢复输入。
+- 只有一个开始界面：官方空白会话（标题「今天需要处理什么？」，composer 提示「描述需要处理的问题，或上传法律材料」）。
+  旧的首页面板与 `open_home` / `home-launch.v1` 已删除；桌面主页面的“新会话”经 `new-session-requested.v1`
+  交给 Front 发 `start_new_session`。
+- Front 的提示与面板不再自绘在 iframe 上：提示（打开中、启动器失败、退回原文、发送中断等）经
+  `set_composer_notice` 由官方 surface 显示在 composer 上方；需要律师选择或确认的面板（原请求打开门、
+  业务会话选择面板、新建会话对话框）经 `set_surface_panel` 由官方 surface 显示在会话区域，律师的操作经
+  `front-notice-action.v1` / `front-panel-action.v1` 回到 Front。`[data-xiaojian-open-gate]`、
+  `[data-xiaojian-bound-business-session]`、`[data-xiaojian-opening-strip]` 已不存在。
 
-按这条决定，`DshConversationSurface.tsx` 仍存在的以下自绘层**不合规**：
+`DshConversationSurface.tsx` 仍存在的自绘层只剩：
 
-| 层 | 形态 |
-| --- | --- |
-| 请求打开门（`data-xiaojian-open-gate`，仅专业页面请求的 failed/cancelled） | `absolute inset-0 z-[15]` |
-| 业务会话选择面板 `[data-xiaojian-bound-business-session]`（需律师选择、尚无会话、读取失败或关联不符时） | `absolute inset-0 z-20` |
-| 新建会话对话框 | `absolute inset-0 z-30` |
-| 连接中封面 `[data-xiaojian-connecting]` | `absolute inset-0 z-10` |
-| iframe 隔离（`blockConversationFrame` / `hideConversationFrame`） | 给 iframe 加 `inert`；未显示目标会话时加 `invisible pointer-events-none` |
-
-`inset-x-3 top-3 z-20` 的提示条（打开中、启动器失败、退回原文、发送中断）不遮挡会话本体，属 §6.3 的并列 UI。
+| 层 | 形态 | 状态 |
+| --- | --- | --- |
+| 连接中封面 `[data-xiaojian-connecting]` | `absolute inset-0 z-10`，只在官方 surface 连接完成前显示 | 官方 surface 尚不存在时无可交给它的界面，保留 |
+| iframe 隔离（`blockConversationFrame`） | 隐藏或连接中时给 iframe 加 `inert`、`aria-hidden` | 同上；业务关联确认前另以 `inert` 关闭输入 |
 
 ### 6.3 明确允许
 
@@ -235,9 +241,9 @@ conversation 已存在。但它**只在会话列表通知时重查**。scoped co
 
 ### 7.2 覆盖层的整改与条文
 
-覆盖层首页与业务会话加载中状态已整改（§6.2，2026-10-09）。§6.2 表中其余自绘层需要整改为并列形态，
-或改由官方 surface 承担；业务会话选择面板按用户决定暂不改动。§6.2 的决定也需要写入共享规范
-G「Front、Xiaojian 与文书」。以上剩余项均为**规划中**，尚无工单。
+覆盖层的自绘层已改由官方 surface 经 `set_composer_notice` / `set_surface_panel` 承担（§6.2），
+只剩连接中封面。§6.2 的决定（agent 交互界面归官方 surface，Front 不得盖在其上）仍需写入共享规范
+G「Front、Xiaojian 与文书」，**规划中**。
 
 ### 7.3 对官方 Web Client 的补丁
 
@@ -255,7 +261,7 @@ G「Front、Xiaojian 与文书」。以上剩余项均为**规划中**，尚无�
 | 不变式 | 验证方式 |
 | --- | --- |
 | 主页面无覆盖、无隔离（§6.1） | `frontend/tests/unit/xiaojian-page-mode-mounted.test.mjs` |
-| 命令键集与拒绝语义（§3） | `ai-engine-v2/packages/xiaojian/tests/client.spec.ts`、`desktop-page.spec.ts` |
+| 命令键集与拒绝语义（§3） | `ai-engine-v2/packages/xiaojian/tests/client.spec.ts`、`surface-commands.spec.ts`、`entry-modes.spec.ts`、`desktop-page.spec.ts` |
 | 事件解析与 origin 校验（§4） | `frontend/tests/unit/xiaojian-matter-discussion-mounted.test.mjs`、`xiaojian-standalone-entries-mounted.test.mjs` |
 | 导航 fail-closed（§5.1） | `ai-engine-v2/packages/xiaojian/tests/desktop-page.spec.ts`、`client-lifecycle.spec.ts` |
 | 新建会话准入前的上界（§7.1） | `client-lifecycle.spec.ts`（#422 合并后） |
